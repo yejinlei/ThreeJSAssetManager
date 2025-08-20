@@ -39,7 +39,7 @@ export default class MeshManager
             this.resources.sources.forEach(object =>
             {
                 // 如果资源类型为 'glbModel'
-                if (object.type === 'glbModel')
+                if (object.type === 'glbModel' || object.type === 'gltfModel')
                 {
                     // 创建一个新的 Horse 实例并添加到 horses 数组中
                     this.horses.push(new Horse(object.name));
