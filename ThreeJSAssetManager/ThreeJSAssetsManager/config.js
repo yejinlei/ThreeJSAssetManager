@@ -2,6 +2,7 @@
 // 参考: Three.js官方构造函数默认值及核心组件规范
 
 export default {
+    'canvas': 'canvas01',
     'SceneManager': {
         enabled: true,
         Color: {
@@ -49,7 +50,7 @@ export default {
         }, 
         // 新增矩形区域光源配置
         rectAreaLight: {
-            enabled: true, // 默认禁用
+            enabled: false, // 默认禁用
             color: 0x00ff7b, // 光源颜色（白色）
             intensity: 1.0, // 光照强度
             width: 5.1, // 光源宽度

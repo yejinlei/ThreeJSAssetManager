@@ -17,9 +17,12 @@ import DebugUI from './DebugUI.js'
 import Sizes from './Utils/Sizes.js'
 // 导入时间管理模块
 import Time from './Utils/Time.js'
+// 导入资源加载模块
+import sources from './World/sources.js'
+import Resources from './Utils/Resources.js'
 
 // 导入世界管理模块
-import worldManager from './World/World.js'
+import MeshManager from './MeshManager.js'
 
 // 单例模式的实例变量，初始化为 null
 let instance = null;
@@ -53,14 +56,16 @@ export default class ThreeJSAssetsManager
     this.debug = this.debuguiinstance.debug;
     this.gui = this.debuguiinstance.gui;
 
+    // 初始化资源管理器
+    this.resources = new Resources(sources);
     // 初始化场景管理器并获取场景对象
     this.sceneManagerinstance = new SceneManager(this.canvas);
     this.scene = this.sceneManagerinstance.scene
+    this.mainGroup = this.sceneManagerinstance.mainGroup;
     // 初始化灯光管理器
     this.lightManagerInstance = new LightManager();
-
     // 初始化世界渲染实例
-    this.worldRenderInstance = new worldManager();
+    this.meshManagerInstance = new MeshManager();
 
     // 初始化窗口尺寸管理器和时间管理器
     this.sizes = new Sizes();
@@ -106,7 +111,7 @@ export default class ThreeJSAssetsManager
     // 调用相机管理器的 update 方法更新相机状态
     this.cameraManagerInstance.update();
     // 调用世界渲染实例的 update 方法更新世界状态
-    this.worldRenderInstance.update();
+    this.meshManagerInstance.update();
     // 调用渲染管理器的 update 方法更新渲染内容
     this.renderManagerInstance.update();
   }

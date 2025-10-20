@@ -1,4 +1,5 @@
 import * as dat from 'lil-gui';
+import config from "./config.js";
 
 export default class DebugUI 
 {
@@ -12,7 +13,13 @@ export default class DebugUI
         // 打印构造函数启动日志，包含当前 URL 的哈希值，方便调试时确认启动状态
         console.log(`DebugUI 构造函数：${window.location.hash}`);
         // 通过比较 URL 的哈希值是否为 '#debug' 来决定是否开启调试模式，结果存储在实例属性中
-        this.debug = window.location.hash === '#debug';
+        if (config['DebugUI'].enabled === true || window.location.hash === '#debug')
+        {
+            this.debug = true;
+        } else
+        {
+            this.debug = false;
+        }
 
         // 检查调试模式是否已开启
         this.gui = null;
