@@ -1,21 +1,28 @@
-# ThreeJSAssetManager
+# Three.js 配置化框架 (ThreeJSAssetManager)
 
-ThreeJSAssetManager 是一个基于 Three.js 的模块化资源和场景管理器。它旨在简化 Three.js 项目的初始化、资源加载、场景配置和调试过程。通过采用单例模式和模块化设计，它提供了一个结构清晰、易于扩展的开发框架。
+一个基于 Three.js 的配置化 3D 开发框架，让您**通过配置文件而非代码**来构建 3D 场景。旨在简化 Three.js 项目的初始化、资源加载、场景配置和调试过程。
 
-## 主要特性
+## 💡 核心理念
 
-- **单例管理**: `ThreeJSAssetsManager` 作为核心入口，统一管理所有子模块，确保全局状态的一致性。
-- **模块化架构**:
-    - **SceneManager**: 负责场景背景、雾效、环境光等基础环境配置。
-    - **LightManager**: 支持多种光源（环境光、平行光、点光源、聚光灯、半球光、面光源）的创建和调试。
-    - **CameraManager**: 管理相机（透视/正交）及轨道控制器（OrbitControls）。
-    - **RenderManager**: 封装 WebGLRenderer，支持色调映射、阴影贴图和自适应窗口调整。
-    - **MeshManager**: 负责几何体创建、GLB 模型加载及可见性管理。
-    - **DebugUI**: 集成 `lil-gui`，支持通过 URL 参数或配置开启调试面板。
-- **配置驱动**: 通过 `config.js` 集中管理各项参数，无需修改核心代码即可调整场景效果。
-- **资源管理**: 内置资源加载器，支持 GLB/GLTF 模型、纹理等资源的预加载。
+**配置即代码** - 修改配置文件即可控制整个 3D 场景
 
-## 目录结构
+```javascript
+// 传统方式：编写大量代码
+const scene = new THREE.Scene();
+const light = new THREE.AmbientLight(0xffffff, 0.5);
+scene.add(light);
+// ...
+
+// 本框架：修改配置文件
+// config.js
+export default {
+  'LightManager': {
+    ambientLight: { enabled: true, color: 0xffffff, intensity: 0.5 }
+  }
+}
+```
+
+## 📂 目录结构
 
 ```
 ThreeJSAssetManager/
@@ -35,62 +42,207 @@ ThreeJSAssetManager/
 └── ...
 ```
 
-## 快速开始
+## 🎯 两个核心配置文件
+
+### 📄 config.js - 场景配置
+控制场景、相机、灯光、渲染器等基础参数
+
+```javascript
+export default {
+  'SceneManager': { Color: { enabled: true, value: 0xababab } },
+  'CameraManager': { cameraType: 'perspective', cameraOptions: { fov: 75 } },
+  'LightManager': { ambientLight: { enabled: true, intensity: 0.5 } }
+}
+```
+
+### 📄 sources.js - 资源配置
+声明需要加载的 3D 模型、纹理、环境贴图等资源
+
+```javascript
+export default [
+  {
+    name: 'environment',
+    type: 'rgbeLoader',
+    file: { path: 'textures/envmap.hdr' }
+  },
+  {
+    name: 'Horse',
+    type: 'glbModel',
+    file: { path: 'models/horse.glb', scale: 0.01 }
+  }
+]
+```
+
+## ✨ 核心特性
+
+### 🔧 配置驱动
+所有 Three.js 特性通过配置文件控制，无需编写底层代码
+
+### 🎮 实时调试
+URL 添加 `#debug` 即可启用可视化调试面板
+```
+http://localhost:5173/index.html#debug
+```
+
+### 📦 模块化架构
+- **SceneManager** - 场景、背景、雾效
+- **CameraManager** - 相机、控制器
+- **LightManager** - 6 种光源类型
+- **RenderManager** - 渲染器、阴影、后处理
+- **Resources** - 资源加载（GLB、纹理、HDR）
+- **MeshManager** - 模型管理
+
+### 🌐 资源类型支持
+- `glbModel` - GLB/GLTF 3D 模型（自动配置 DRACO 压缩）
+- `rgbeLoader` - HDR 环境贴图（PBR 材质）
+- `texture` - 普通纹理
+- `cubeTexture` - 立方体贴图
+
+## 🚀 快速开始
 
 ### 1. 安装依赖
 
-本项目依赖 `three` 和 `lil-gui`。通常通过 CDN 或 npm 安装。如果使用 npm：
+本项目依赖 `three` 和 `lil-gui`。通常通过 CDN 或 npm 安装。
 
+**使用 npm:**
 ```bash
 npm install three lil-gui
 ```
 
-### 2. 引入和初始化
+### 2. 最小示例 (HTML)
 
-在你的入口文件（如 `app.js`）中引入并初始化 `ThreeJSAssetsManager`：
-
-```javascript
-import ThreeJSAssetsManager from './ThreeJSAssetsManager/ThreeJSAssetsManager.js';
-
-// 获取 canvas 元素
-const canvas = document.querySelector('canvas.webgl');
-
-// 初始化管理器
-const assetsManager = new ThreeJSAssetsManager(canvas);
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://gcore.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
+      "three/addons/": "https://gcore.jsdelivr.net/npm/three@0.165.0/examples/jsm/",
+      "lil-gui": "https://cdn.jsdelivr.net/npm/lil-gui@0.18.1/+esm"
+    }
+  }
+  </script>
+</head>
+<body>
+  <canvas id="webgl"></canvas>
+  <script type="module">
+    import ThreeJSAssetsManager from './ThreeJSAssetsManager/ThreeJSAssetsManager.js';
+    const app = new ThreeJSAssetsManager(document.querySelector('#webgl'));
+  </script>
+</body>
+</html>
 ```
 
-### 3. 配置文件 (config.js)
+### 3. 修改配置
 
-你可以通过修改 `config.js` 来调整场景设置，例如开启调试模式或修改灯光参数：
+编辑 [`config.js`](ThreeJSAssetsManager/ThreeJSAssetsManager/config.js)：
 
 ```javascript
 export default {
-    DebugUI: {
-        enabled: true // 开启调试面板
-    },
-    SceneManager: {
-        enabled: true,
-        Color: { enabled: true, value: '#000000' },
-        fog: { enabled: true, color: '#000000', near: 10, far: 100 }
-    },
-    LightManager: {
-        ambientLight: { enabled: true, color: '#ffffff', intensity: 0.5 },
-        directionalLight: { enabled: true, color: '#ffffff', intensity: 1, position: { x: 5, y: 10, z: 7.5 } }
-        // ... 其他灯光配置
-    },
-    // ...
+  'SceneManager': {
+    Color: { enabled: true, value: 0x87ceeb }  // 天蓝色背景
+  },
+  'LightManager': {
+    ambientLight: { enabled: true, intensity: 0.8 }  // 提高环境光
+  }
 }
 ```
 
-## 调试模式
+### 4. 配置资源
 
-可以通过以下两种方式开启调试模式：
-1. 在 `config.js` 中设置 `DebugUI.enabled = true`。
-2. 在 URL 后添加 `#debug` 哈希，例如 `http://localhost:3000/#debug`。
+编辑 [`sources.js`](ThreeJSAssetsManager/ThreeJSAssetsManager/World/sources.js)：
 
-开启后，右上角将显示 GUI 面板，可实时调整场景、灯光、渲染等参数。
+```javascript
+export default [
+  {
+    name: 'myModel',
+    type: 'glbModel',
+    file: {
+      path: 'models/mymodel.glb',
+      position: {x: 0, y: 0, z: 0},
+      scale: 1.0
+    }
+  }
+]
+```
 
-## 待办事项 (TODO)
+## 📚 主要 API
+
+### ThreeJSAssetsManager
+
+```javascript
+const app = new ThreeJSAssetsManager(canvas);
+
+// 主要属性
+app.scene                    // Three.js 场景对象
+app.camera                   // 相机对象
+app.resources                // 资源管理器
+app.meshManagerInstance      // 模型管理器
+app.time                     // 时间管理器
+app.sizes                    // 尺寸管理器
+```
+
+### 事件系统
+
+```javascript
+// 窗口尺寸变化
+app.sizes.on('resize', () => {
+  console.log('窗口尺寸:', app.sizes.width, app.sizes.height);
+});
+
+// 每帧更新
+app.time.on('tick', () => {
+  console.log('帧间隔:', app.time.delta, 'ms');
+});
+
+// 资源加载完成
+app.resources.on('ready', () => {
+  console.log('所有资源已加载');
+});
+```
+
+## 📖 文档导航
+
+- **[USER_GUIDE.md](USER_GUIDE.md)** - 使用指南，如何通过配置快速构建 3D 场景
+- **[TECHNICAL_GUIDE.md](TECHNICAL_GUIDE.md)** - 技术指南，架构设计与核心类详解
+- **[CONFIG_ANALYSIS.md](CONFIG_ANALYSIS.md)** - 配置参数详解，深度剖析每个配置项的作用
+- **[UPDATE_NOTES.md](UPDATE_NOTES.md)** - 版本更新日志
+
+## 💡 使用技巧
+
+### 调试模式
+URL 添加 `#debug` 启用可视化调试面板，实时调整所有参数
+
+### 资源加载监听
+```javascript
+app.resources.on('ready', () => {
+  console.log('资源已加载:', app.resources.items);
+});
+```
+
+### 模型管理
+```javascript
+// 获取所有加载的 GLB 模型
+const models = app.meshManagerInstance.glbObjects;
+
+// 控制模型可见性
+app.meshManagerInstance.setGLBVisibility('Horse', false);
+```
+
+## ❓ 常见问题
+
+**Q: 模型加载后看不见？**
+A: 检查 `sources.js` 中的 scale 和 position 配置，调整相机位置，确保有光源
+
+**Q: 如何提高性能？**
+A: 在 `config.js` 中减少光源数量、禁用阴影、降低渲染质量
+
+**Q: 如何自定义相机位置？**
+A: 修改 `CameraManager.js` 中的 `camera.position.set(x, y, z)`
+
+## 📝 待办事项 (TODO)
 
 以下是计划在未来版本中集成的 Three.js 特性：
 
@@ -107,6 +259,6 @@ export default {
 - [ ] **动画系统增强**: 支持更复杂的动画混合 (Animation Blending)、状态机和骨骼动画控制。
 - [ ] **辅助工具 (Helpers)**: 增加 GridHelper, AxesHelper, CameraHelper 等更多调试辅助工具的统一管理。
 
-## 许可证
+## 📄 许可证
 
 MIT License

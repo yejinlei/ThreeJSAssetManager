@@ -33,18 +33,24 @@ export default class MeshManager
         // 初始化一个数组，用于存储 Horse 实例
         this.horses = [];
 
-        // 等待资源加载完成后执行回调函数
-        this.resources.on('ready', () => {
-            // 遍历所有资源
-            this.resources.sources.forEach(object =>
-            {
-                // 如果资源类型为 'glbModel'
-                if (object.type === 'glbModel' || object.type === 'gltfModel')
-                {
-                    // 创建一个新的 Horse 实例并添加到 horses 数组中
-                    this.horses.push(new Horse(object.name));
-                }
-            })
+        // 调用异步初始化方法
+        this.init();
+    }
+
+    async init() {
+        // 封装资源加载完成事件为 Promise
+        await new Promise((resolve) => {
+            this.resources.on('ready', () => {
+                // 遍历所有资源
+                this.resources.sources.forEach(object => {
+                    // 如果资源类型为 'glbModel'
+                    if (object.type === 'glbModel' || object.type === 'gltfModel') {
+                        // 创建一个新的 Horse 实例并添加到 horses 数组中
+                        this.horses.push(new Horse(object.name));
+                    }
+                });
+                resolve();
+            });
         });
         // 从管理器实例中获取场景中的 GLBMainGroup 对象
         this.glbmaingroup = this.scene.children.find(object => object.name ===  'GLBMainGroup');

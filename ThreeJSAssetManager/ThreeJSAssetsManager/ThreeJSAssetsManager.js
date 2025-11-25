@@ -23,6 +23,8 @@ import Resources from './Utils/Resources.js'
 
 // 导入世界管理模块
 import MeshManager from './MeshManager.js'
+// 导入动画管理模块
+import AnimationManager from './Utils/AnimationManager.js'
 
 // 单例模式的实例变量，初始化为 null
 let instance = null;
@@ -66,6 +68,8 @@ export default class ThreeJSAssetsManager
     this.lightManagerInstance = new LightManager();
     // 初始化世界渲染实例
     this.meshManagerInstance = new MeshManager();
+    // 初始化动画管理器
+    this.animationManagerInstance = new AnimationManager();
 
     // 初始化窗口尺寸管理器和时间管理器
     this.sizes = new Sizes();

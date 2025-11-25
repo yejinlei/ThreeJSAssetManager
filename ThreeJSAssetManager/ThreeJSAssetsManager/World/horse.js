@@ -1,5 +1,6 @@
-import { AnimationMixer, Color, Fog, Scene, Mesh } from 'three';
+import { Color, Fog, Scene, Mesh } from 'three';
 import ThreeJSAssetsManager from "../ThreeJSAssetsManager.js";
+import AnimationManager from '../Utils/AnimationManager.js';
 
 export default class Horse {
   constructor(name) {
@@ -35,14 +36,16 @@ export default class Horse {
     this.gltf = this.resources.items[name];
     // Scene的名字也改为模型名称
     this.gltf.scene.name = name;
-    
-    // Only set model if gltf is loaded and has scene
     if(this.gltf && this.gltf.scene) {
       this.setModel();
-      this.setAnimation();
-    } else {
-      console.error('%cHorse GLTF model not properly loaded', 'color: red; font-weight: bold;');
     }
+    // Only set model if gltf is loaded and has scene
+    // if(this.gltf && this.gltf.scene) {
+    //   this.setModel();
+    //   this.setAnimation();
+    // } else {
+    //   console.error('%cHorse GLTF model not properly loaded', 'color: red; font-weight: bold;');
+    // }
   }
 
   setModel() {
@@ -112,6 +115,8 @@ export default class Horse {
     }
     
     // 添加到场景的GLB主分组GLBMainGroup
+    console.log("AnimationManager.parseAnimationParameters:", this.model);
+
     this.glbmaingroup.add(this.model);
 
     // 设置阴影
@@ -335,11 +340,9 @@ export default class Horse {
   }
 
   update() {
-    if (!this.model || !this.animation || !this.animation.mixer) return;
-
-    // 使用动画速度缩放因子
-    const timeScale = this.animation.timeScale || 1.0;
-    this.animation.mixer.update(this.time.delta * 0.001 * timeScale); // multiply by 0.001 or divide by 1000 because the animation is in milliseconds
+    if (this.animationManager) {
+      this.animationManager.update(this.time.delta);
+    }
   }
   
   // 提供公共方法用于外部控制
