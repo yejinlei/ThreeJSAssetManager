@@ -318,6 +318,13 @@ export default class DebugUI
                         if (self.sceneManager && self.sceneManager.scene) {
                             self.sceneManager.scene.add(model);
                             console.log(`✅ 模型已成功加载并添加到场景: ${model.name}`);
+                            console.log(`📊 模型信息: 名称=${model.name}, 子对象数量=${model.children.length}, 位置=${model.position.toArray()}`);
+                            
+                            // 确保渲染器更新
+                            if (self.sceneManager.renderer) {
+                                console.log('🔄 触发渲染器更新');
+                                self.sceneManager.renderer.render(self.sceneManager.scene, self.sceneManager.camera);
+                            }
                         }
 
                         // 计算模型边界，调整相机位置
@@ -338,6 +345,14 @@ export default class DebugUI
                             if (self.sceneManager.controls) {
                                 self.sceneManager.controls.target.copy(center);
                                 self.sceneManager.controls.update();
+                                console.log('🎮 控制器目标已更新到模型中心:', center.toArray());
+                            }
+                            
+                            // 添加光源检查
+                            const lights = self.sceneManager.scene.children.filter(child => child.isLight);
+                            console.log(`💡 场景中的光源数量: ${lights.length}`);
+                            if (lights.length === 0) {
+                                console.warn('⚠️ 场景中没有光源，模型可能因为太暗而不可见');
                             }
                         }
                     } catch (error) {
