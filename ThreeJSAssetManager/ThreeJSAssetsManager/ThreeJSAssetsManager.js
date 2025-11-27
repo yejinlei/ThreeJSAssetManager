@@ -79,43 +79,43 @@ export default class ThreeJSAssetsManager {
     // 初始化资源管理器
     this.resources = new Resources(sources);
     // 初始化场景管理器并获取场景对象
-    this.sceneManagerinstance = new SceneManager(this.canvas);
+    this.sceneManagerinstance = new SceneManager(this.canvas, {debug: this.debug, gui: this.gui});
     this.scene = this.sceneManagerinstance.scene
     this.mainGroup = this.sceneManagerinstance.mainGroup;
     // 初始化灯光管理器
-    this.lightManagerInstance = new LightManager();
+    this.lightManagerInstance = new LightManager({debug: this.debug, gui: this.gui});
     // 初始化世界渲染实例
-    this.meshManagerInstance = new MeshManager();
+    this.meshManagerInstance = new MeshManager({debug: this.debug, gui: this.gui});
     // 初始化动画管理器
-    this.animationManagerInstance = new AnimationManager();
+    this.animationManagerInstance = new AnimationManager({debug: this.debug, gui: this.gui});
 
     // 初始化窗口尺寸管理器和时间管理器
     this.sizes = new Sizes();
     this.time = new Time();
 
     // 初始化相机管理器并获取相机对象
-    this.cameraManagerInstance = new CameraManager();
+    this.cameraManagerInstance = new CameraManager({debug: this.debug, gui: this.gui});
     this.camera = this.cameraManagerInstance.camera;
     // 初始化渲染管理器
-    this.renderManagerInstance = new RenderManager();
+    this.renderManagerInstance = new RenderManager({debug: this.debug, gui: this.gui});
     // 初始化后期处理器
-    this.postProcessor = new PostProcessor();
+    this.postProcessor = new PostProcessor({debug: this.debug, gui: this.gui});
     // 初始化辅助工具管理器
-    this.helperManager = new HelperManager();
+    this.helperManager = new HelperManager({debug: this.debug, gui: this.gui});
     // 初始化交互系统管理器
-    this.interactionManager = new InteractionManager();
+    this.interactionManager = new InteractionManager({debug: this.debug, gui: this.gui});
     // 初始化粒子系统管理器
-    this.particleManager = new ParticleManager();
+    this.particleManager = new ParticleManager({debug: this.debug, gui: this.gui});
     // 初始化性能优化管理器
-    this.performanceManager = new PerformanceManager();
+    this.performanceManager = new PerformanceManager({debug: this.debug, gui: this.gui});
     // 初始化着色器管理器
-    this.shaderManager = new ShaderManager();
+    this.shaderManager = new ShaderManager({debug: this.debug, gui: this.gui});
     // 初始化物理引擎管理器
-    this.physicsManager = new PhysicsManager();
+    this.physicsManager = new PhysicsManager({debug: this.debug, gui: this.gui});
     // 初始化音频系统管理器
-    this.audioManager = new AudioManager();
+    this.audioManager = new AudioManager({debug: this.debug, gui: this.gui});
     // 初始化WebXR管理器
-    this.webXRManager = new WebXRManager();
+    this.webXRManager = new WebXRManager({debug: this.debug, gui: this.gui});
 
     // 为窗口尺寸变化事件注册监听器，当窗口尺寸变化时调用 resize 方法
     this.sizes.on('resize', () => {
