@@ -2,6 +2,10 @@ import * as dat from 'lil-gui';
 import config from "./config.js";
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+
+// 确保DRACOLoader全局可用
+window.DRACOLoader = DRACOLoader;
 
 export default class DebugUI 
 {
@@ -256,106 +260,93 @@ export default class DebugUI
      * 初始化GLB文件拖放功能
      */
     initDragDropGLB() {
-        const scene = this.sceneManager ? this.sceneManager.scene : null;
-        const loader = new GLTFLoader();
+        // 保存this引用，避免上下文丢失
+        const self = this;
         
-        // 创建拖放提示
-        const dropArea = document.createElement('div');
-        dropArea.style.position = 'fixed';
-        dropArea.style.top = '50%';
-        dropArea.style.left = '50%';
-        dropArea.style.transform = 'translate(-50%, -50%)';
-        dropArea.style.zIndex = '1000';
-        dropArea.style.background = 'rgba(0, 0, 0, 0.7)';
-        dropArea.style.color = 'white';
-        dropArea.style.padding = '20px';
-        dropArea.style.borderRadius = '10px';
-        dropArea.style.fontSize = '16px';
-        dropArea.style.display = 'none'; // 默认隐藏
-        dropArea.textContent = '拖放 GLB 文件到此处加载';
-        document.body.appendChild(dropArea);
-        
-        // 为document添加拖放事件
+        // 确保引入了必要的加载器
+        if (!window.DRACOLoader) {
+            console.warn('未找到 DRACOLoader，可能无法加载压缩的 GLB 模型');
+        }
+
+        // 阻止默认的拖放行为
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
             document.addEventListener(eventName, preventDefaults, false);
         });
-        
+
         function preventDefaults(e) {
             e.preventDefault();
             e.stopPropagation();
         }
-        
-        ['dragenter', 'dragover'].forEach(eventName => {
-            document.addEventListener(eventName, highlight, false);
-        });
-        
-        ['dragleave', 'drop'].forEach(eventName => {
-            document.addEventListener(eventName, unhighlight, false);
-        });
-        
-        function highlight() {
-            dropArea.style.display = 'block';
-        }
-        
-        function unhighlight() {
-            dropArea.style.display = 'none';
-        }
-        
+
         // 处理文件拖放
         document.addEventListener('drop', handleDrop, false);
-        
+
         function handleDrop(e) {
             const dt = e.dataTransfer;
             const files = dt.files;
-            
-            for (let i = 0; i < files.length; i++) {
-                const file = files[i];
-                if (file.name.endsWith('.glb')) {
-                    handleGLBFile(file);
-                }
+
+            if (files.length && files[0].name.endsWith('.glb')) {
+                handleGLBFile(files[0]);
             }
         }
-        
+
         function handleGLBFile(file) {
-            console.log(`📁 开始加载 GLB 文件: ${file.name}`);
+            // 初始化 GLTFLoader 并配置 DRACOLoader
+            const loader = new GLTFLoader();
             
+            // 配置 DRACOLoader 以支持压缩的模型
+            try {
+                const dracoLoader = new DRACOLoader();
+                // 设置 draco 解码器路径 - 修改为当前运行环境正确的路径
+                dracoLoader.setDecoderPath('libs/draco/');
+                loader.setDRACOLoader(dracoLoader);
+                console.log('✅ DRACOLoader 已配置，支持压缩模型');
+            } catch (e) {
+                console.warn('⚠️ DRACOLoader 初始化失败，但将继续尝试加载模型:', e);
+            }
+
             const fileURL = URL.createObjectURL(file);
-            
+
             loader.load(
                 fileURL,
                 (gltf) => {
-                    // 处理加载的模型
-                    const model = gltf.scene;
-                    model.name = file.name.replace('.glb', '');
-                    
-                    // 将模型添加到场景
-                    if (scene) {
-                        scene.add(model);
-                        console.log(`✅ 模型已成功加载并添加到场景: ${model.name}`);
+                    try {
+                        const model = gltf.scene;
+                        model.name = file.name.replace('.glb', '');
                         
-                        // 调整相机以查看模型
-                        const box = new THREE.Box3().setFromObject(model);
-                        const center = box.getCenter(new THREE.Vector3());
-                        const size = box.getSize(new THREE.Vector3());
-                        
-                        // 计算模型的对角线长度，用于设置相机位置
-                        const maxDim = Math.max(size.x, size.y, size.z);
-                        const fov = 75;
-                        const cameraDistance = Math.abs(maxDim / 2 / Math.tan(fov * Math.PI / 360));
-                        
-                        // 如果有相机管理器，调整相机位置
-                        if (window.camera && window.controls) {
-                            window.camera.position.set(center.x + cameraDistance, center.y + cameraDistance / 2, center.z + cameraDistance);
-                            window.camera.lookAt(center);
-                            window.controls.target.copy(center);
-                            window.controls.update();
+                        // 确保使用管理器引用的场景 - 使用保存的self引用
+                        if (self.sceneManager && self.sceneManager.scene) {
+                            self.sceneManager.scene.add(model);
+                            console.log(`✅ 模型已成功加载并添加到场景: ${model.name}`);
                         }
+
+                        // 计算模型边界，调整相机位置
+                        const box = new THREE.Box3().setFromObject(model);
+                        const size = box.getSize(new THREE.Vector3());
+                        const center = box.getCenter(new THREE.Vector3());
+
+                        // 调整相机位置，确保模型完全可见 - 使用保存的self引用
+                        if (self.sceneManager && self.sceneManager.camera) {
+                            const maxDim = Math.max(size.x, size.y, size.z);
+                            const fov = self.sceneManager.camera.fov || 75;
+                            const cameraDistance = Math.abs(maxDim / 2 / Math.tan(fov * Math.PI / 360));
+
+                            self.sceneManager.camera.position.set(center.x + cameraDistance, center.y + cameraDistance / 2, center.z + cameraDistance);
+                            self.sceneManager.camera.lookAt(center);
+
+                            // 如果有控制器，更新目标
+                            if (self.sceneManager.controls) {
+                                self.sceneManager.controls.target.copy(center);
+                                self.sceneManager.controls.update();
+                            }
+                        }
+                    } catch (error) {
+                        console.error('GLB 模型处理错误:', error);
+                    } finally {
+                        URL.revokeObjectURL(fileURL);
                     }
-                    
-                    URL.revokeObjectURL(fileURL);
                 },
                 (xhr) => {
-                    // 显示加载进度
                     const percentComplete = (xhr.loaded / xhr.total) * 100;
                     console.log(`⏳ 加载进度: ${Math.round(percentComplete)}%`);
                 },
