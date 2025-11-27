@@ -1,4 +1,4 @@
-import { PerspectiveCamera } from 'three';
+import * as THREE from 'three';
 // 从 three.js 扩展库中导入 OrbitControls 类，用于实现相机轨道控制
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 // 导入 ThreeJSAssetsManager 类，用于获取项目管理实例

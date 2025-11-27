@@ -28,7 +28,7 @@ export default class Resources extends EventEmitter {
     // 创建一个共享的 DRACOLoader 实例
     const dracoLoader = new DRACOLoader();
     // 使用 CDN 上的 Draco 解码器
-    dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
+    dracoLoader.setDecoderPath('./libs/draco/');
     // 可选：设置为使用 JS 解码器而不是 WASM (如果 WASM 有问题)
     // dracoLoader.setDecoderConfig({ type: 'js' });
     

@@ -88,9 +88,18 @@ http://localhost:5173/index.html#debug
 - **SceneManager** - 场景、背景、雾效
 - **CameraManager** - 相机、控制器
 - **LightManager** - 6 种光源类型
-- **RenderManager** - 渲染器、阴影、后处理
+- **RenderManager** - 渲染器、阴影
+- **PostProcessor** - 后期处理（Bloom等效果）
 - **Resources** - 资源加载（GLB、纹理、HDR）
 - **MeshManager** - 模型管理
+- **InteractionManager** - 鼠标交互、拖拽
+- **ParticleManager** - 粒子系统
+- **PerformanceManager** - 性能优化（InstancedMesh、LOD）
+- **ShaderManager** - 自定义着色器
+- **PhysicsManager** - 物理引擎（Cannon.js）
+- **AudioManager** - 3D空间音效
+- **WebXRManager** - VR/AR支持
+- **HelperManager** - 调试辅助工具
 
 ### 🌐 资源类型支持
 - `glbModel` - GLB/GLTF 3D 模型（自动配置 DRACO 压缩）
@@ -149,6 +158,83 @@ export default {
   }
 }
 ```
+
+## 🎨 高级特性 (Dev Branch)
+
+### 后期处理 (Post-processing)
+```javascript
+'PostProcessing': {
+    enabled: true,
+    bloom: {
+        enabled: true,
+        strength: 1.5,
+        radius: 0.4,
+        threshold: 0.85
+    }
+}
+```
+
+### 交互系统 (Interaction)
+```javascript
+'Interaction': {
+    enabled: true,
+    enableDrag: true,  // 启用拖拽
+    highlightOnHover: true  // 悬停高亮
+}
+```
+
+### 粒子系统 (Particles)
+```javascript
+'Particles': {
+    systems: [{
+        enabled: true,
+        name: 'Snow',
+        count: 1000,
+        size: 0.1,
+        spread: 20,
+        animate: true
+    }]
+}
+```
+
+### 物理引擎 (Physics)
+```javascript
+'Physics': {
+    enabled: true,
+    gravity: { x: 0, y: -9.82, z: 0 },
+    createGround: true
+}
+```
+**注意**: 需要安装 `cannon-es`: `npm install cannon-es`
+
+### 性能优化 (Performance)
+- **InstancedMesh**: 渲染数千个重复对象
+- **LOD**: 根据距离自动切换模型精度
+
+### 自定义着色器 (Shaders)
+```javascript
+manager.shaderManager.createWaveShader('myWave');
+manager.shaderManager.createAnimatedShader('myShader');
+```
+
+### 音频系统 (Audio)
+```javascript
+manager.audioManager.loadPositionalAudio('sound1', 'path/to/sound.mp3', {x: 0, y: 0, z: 0});
+```
+
+### WebXR (VR/AR)
+```javascript
+'WebXR': {
+    enabled: true,
+    createVRButton: true,
+    createARButton: true
+}
+```
+
+## 🧪 功能测试
+
+打开 `feature-test.html` 查看所有功能的交互式演示。
+
 
 ### 4. 配置资源
 

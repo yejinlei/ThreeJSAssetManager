@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Three.js Feature Test - 功能测试</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+            overflow-x: hidden;
+        }
+
+        #canvas01 {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            outline: none;
+        }
+
+        .info-panel {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 400px;
+            z-index: 100;
+        }
+
+        .info-panel h2 {
+            margin-bottom: 15px;
+            color: #00ff88;
+        }
+
+        .feature-list {
+            list-style: none;
+        }
+
+        .feature-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .feature-list li:last-child {
+            border-bottom: none;
+        }
+
+        .status {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .status.active {
+            background: #00ff88;
+            box-shadow: 0 0 10px #00ff88;
+        }
+
+        .status.inactive {
+            background: #666;
+        }
+
+        .controls {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            z-index: 100;
+        }
+
+        .controls button {
+            background: #00ff88;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .controls button:hover {
+            background: #00cc6a;
+            transform: translateY(-2px);
+        }
+
+        .controls button:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="canvas01"></canvas>
+
+    <div class="info-panel">
+        <h2>🎮 功能测试面板</h2>
+        <ul class="feature-list">
+            <li><span class="status active"></span>后期处理 (Post-processing)</li>
+            <li><span class="status active"></span>物理引擎 (Physics)</li>
+            <li><span class="status active"></span>交互系统 (Interaction)</li>
+            <li><span class="status active"></span>粒子系统 (Particles)</li>
+            <li><span class="status active"></span>音频系统 (Audio)</li>
+            <li><span class="status active"></span>WebXR (VR/AR)</li>
+            <li><span class="status active"></span>性能优化 (Performance)</li>
+            <li><span class="status active"></span>自定义着色器 (Shaders)</li>
+            <li><span class="status active"></span>辅助工具 (Helpers)</li>
+        </ul>
+        <p style="margin-top: 15px; font-size: 12px; color: #888;">
+            💡 在URL后添加 <code style="color: #00ff88;">#debug</code> 启用调试面板
+        </p>
+    </div>
+
+    <div class="controls">
+        <button onclick="testParticles()">测试粒子</button>
+        <button onclick="testPhysics()">测试物理</button>
+        <button onclick="testShaders()">测试着色器</button>
+        <button onclick="testPerformance()">测试性能</button>
+        <button onclick="testHelpers()">显示辅助工具</button>
+    </div>
+
+    <!-- Cannon.js for Physics -->
+    <script src="https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"></script>
+
+    <script type="module">
+        import ThreeJSAssetsManager from './ThreeJSAssetsManager/ThreeJSAssetsManager.js';
+
+        // Initialize
+        const canvas = document.getElementById('canvas01');
+        const manager = new ThreeJSAssetsManager(canvas);
+
+        // Make manager globally accessible for testing
+        window.manager = manager;
+
+        // Test functions
+        window.testParticles = () => {
+            console.log('Testing Particles...');
+            if (manager.particleManager) {
+                // Enable a particle system
+                const config = manager.particleManager.config;
+                if (config.systems && config.systems[0]) {
+                    config.systems[0].enabled = true;
+                    manager.particleManager.init();
+                    alert('粒子系统已启用！查看场景中的粒子效果。');
+                }
+            }
+        };
+
+        window.testPhysics = () => {
+            console.log('Testing Physics...');
+            if (manager.physicsManager && manager.physicsManager.enabled) {
+                // Create a falling box
+                manager.physicsManager.createPhysicsBox({ x: 0, y: 5, z: 0 }, 1);
+                alert('物理盒子已创建！观察它掉落。');
+            } else {
+                alert('物理引擎未启用。请在 config.js 中设置 Physics.enabled = true');
+            }
+        };
+
+        window.testShaders = () => {
+            console.log('Testing Shaders...');
+            if (manager.shaderManager) {
+                // Create wave shader
+                const material = manager.shaderManager.createWaveShader('test_wave');
+                const geometry = new THREE.PlaneGeometry(5, 5, 50, 50);
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.rotation.x = -Math.PI / 2;
+                mesh.position.y = -2;
+                manager.scene.add(mesh);
+                manager.shaderManager.shaderMeshes.push({ mesh, materialName: 'test_wave' });
+                alert('波浪着色器已创建！查看地面的波浪效果。');
+            }
+        };
+
+        window.testPerformance = () => {
+            console.log('Testing Performance...');
+            if (manager.performanceManager) {
+                // Create instanced cubes
+                const geometry = new THREE.BoxGeometry(0.3, 0.3, 0.3);
+                const material = new THREE.MeshStandardMaterial({ color: 0x00ff88 });
+                manager.performanceManager.createInstancedMesh(geometry, material, 500);
+                alert('已创建 500 个实例化立方体！性能优化演示。');
+            }
+        };
+
+        window.testHelpers = () => {
+            console.log('Testing Helpers...');
+            if (manager.helperManager) {
+                // Enable grid and axes
+                if (manager.helperManager.config.grid) {
+                    manager.helperManager.config.grid.enabled = true;
+                }
+                if (manager.helperManager.config.axes) {
+                    manager.helperManager.config.axes.enabled = true;
+                }
+                manager.helperManager.init();
+                alert('辅助工具已显示！查看网格和坐标轴。');
+            }
+        };
+
+        console.log('✅ ThreeJSAssetsManager initialized');
+        console.log('📦 Available managers:', {
+            postProcessor: !!manager.postProcessor,
+            helperManager: !!manager.helperManager,
+            interactionManager: !!manager.interactionManager,
+            particleManager: !!manager.particleManager,
+            performanceManager: !!manager.performanceManager,
+            shaderManager: !!manager.shaderManager,
+            physicsManager: !!manager.physicsManager,
+            audioManager: !!manager.audioManager,
+            webXRManager: !!manager.webXRManager
+        });
+
+        // Setup interaction callbacks
+        if (manager.interactionManager) {
+            manager.interactionManager.onClickEvent((object, intersection) => {
+                console.log('Clicked object:', object.name || object.type);
+                // Change color on click
+                if (object.material) {
+                    object.material.color.setHex(Math.random() * 0xffffff);
+                }
+            });
+        }
+    </script>
+</body>
+
+</html>

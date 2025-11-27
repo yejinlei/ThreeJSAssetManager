@@ -354,7 +354,6 @@ function initLights() {
  * 初始化天空盒
  * 创建Three.js的Sky对象，模拟真实天空效果
  */
-function initSky() {
     // 创建Sky对象
     sky = new THREE.Sky();
     sky.scale.setScalar(10000);
@@ -377,10 +376,8 @@ function initSky() {
     updateSun();
 }
 
-// 更新太阳位置和天空效果
 function updateSun() {
     // 只有在启用天空盒时才更新太阳位置
-    if (!useSkybox || !sky) return;
     
     const phi = THREE.MathUtils.degToRad(90 - parameters.elevation);
     const theta = THREE.MathUtils.degToRad(parameters.azimuth);
@@ -398,7 +395,6 @@ function updateSun() {
 
 // 初始化GUI控制面板
 function initGUI() {
-    // let gui = new dat.GUI(); // 直接使用 dat.GUI() 构造函数
     
     // 添加几何体文件夹
     guiFolder = gui.addFolder('模型管理');
@@ -725,7 +721,6 @@ function initGUI() {
     const skyFolder = gui.addFolder('天空参数');
     
     // 添加天空盒切换控制
-    skyFolder.add(parameters, 'useSkybox').name('使用天空盒').onChange(function(value) {
         useSkybox = value;
         parameters.useSkybox = value; // 确保两个变量保持同步
         
@@ -835,7 +830,6 @@ function initGUI() {
     const lightFolder = gui.addFolder('灯参数');
     
     // 环境光控制
-    const ambientLightFolder = lightFolder.addFolder('环境光');
     ambientLightFolder.add(parameters, 'useAmbientLight').name('启用环境光').onChange(function(value) {
         if (value) {
             if (!ambientLight) {
@@ -1087,7 +1081,7 @@ function initScene() {
     
     // 强制清除渲染器状态，确保初始设置正确
     renderer.clear();
-    
+    useSkybox = parameters.useSkybox;
     // 根据useSkybox设置正确的背景
     if (useSkybox) {
         // 初始化天空盒
@@ -1096,7 +1090,6 @@ function initScene() {
         renderer.setClearColor(0x000000, 0);
         
         // 更新环境贴图
-        if (pmremGenerator) {
             scene.environment = pmremGenerator.fromScene(scene).texture;
         }
         
@@ -1128,7 +1121,6 @@ function initScene() {
 initScene();
 if (debugUI.debug === true) initGUI();
 
-
 // 确保在GUI初始化后，如果有模型已加载则创建模型树
 if (loadedModels.length > 0) {
     logMessage('页面刷新，已有模型加载，重新创建模型树...');
@@ -1152,7 +1144,6 @@ function animate() {
     if (useSkybox && sky) {
         // 确保天空盒可见
         if (!scene.children.includes(sky)) {
-            scene.add(sky);
             // 使用天空盒时不需要背景色
             renderer.setClearColor(0x000000, 0);
         }
@@ -1182,4 +1173,3 @@ window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight; // 更新相机宽高比
     camera.updateProjectionMatrix(); // 更新相机投影矩阵
     renderer.setSize(window.innerWidth, window.innerHeight); // 调整渲染器大小
-});
