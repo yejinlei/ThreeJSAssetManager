@@ -116,10 +116,10 @@ export default {
     PostProcessing: {
         enabled: false,
         bloom: {
-            enabled: false,
-            strength: 1.5,
-            radius: 0.4,
-            threshold: 0.85
+            enabled: true,
+            strength: 0.59,
+            radius: 0,
+            threshold: 0.78
         }
     },
     Interaction: {
