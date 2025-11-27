@@ -60,18 +60,7 @@
         }
     </style>
 
-    <!-- 添加 Import Maps 配置 -->
-    <script type="importmap">
-    {
-        "imports": {
-            "three": "https://gcore.jsdelivr.net/npm/three@0.179.1/build/three.module.js",
-            "three/addons/": "https://gcore.jsdelivr.net/npm/three@0.179.1/examples/jsm/",
-            "lil-gui": "https://gcore.jsdelivr.net/npm/lil-gui@0.18.1/dist/lil-gui.esm.min.js"
-        }
-    }
-    </script>
-
-    <!-- Cannon.js for Physics -->
+    <!-- Import Maps 配置 -->
     <script type="importmap">
     {
         "imports": {
@@ -87,10 +76,10 @@
 <body>
     <canvas id="canvas01"></canvas>
 
-
-
     <script type="module">
         import * as THREE from 'three';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
         import ThreeJSAssetsManager from './ThreeJSAssetsManager/ThreeJSAssetsManager.js';
         import config from './ThreeJSAssetsManager/config.js';
 
@@ -98,6 +87,11 @@
         if (window.location.hash === '#debug') {
             config.DebugUI.enabled = true;
             console.log('✅ DebugUI enabled via URL hash');
+        }
+
+        // 禁用 DebugUI 内置的拖放功能，以使用 test.html 中的自定义实现
+        if (config.DebugUI && config.DebugUI.DragDropGLB) {
+            config.DebugUI.DragDropGLB.enabled = false;
         }
 
         // 启用一些功能用于测试
@@ -158,6 +152,55 @@
                 console.log('👆 Hovering:', object.name || object.type);
             });
         }
+
+        // 拖拽加载 GLB/GLTF
+        const dracoLoader = new DRACOLoader();
+        dracoLoader.setDecoderPath('https://gcore.jsdelivr.net/npm/three@0.179.1/examples/jsm/libs/draco/');
+        const gltfLoader = new GLTFLoader();
+        gltfLoader.setDRACOLoader(dracoLoader);
+
+        window.addEventListener('dragover', (e) => {
+            e.preventDefault();
+        }, false);
+
+        window.addEventListener('drop', (e) => {
+            e.preventDefault();
+
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                const file = files[0];
+                const filename = file.name.toLowerCase();
+
+                if (filename.endsWith('.glb') || filename.endsWith('.gltf')) {
+                    const url = URL.createObjectURL(file);
+                    console.log(`📂 Loading dropped file: ${file.name}`);
+
+                    gltfLoader.load(url, (gltf) => {
+                        const model = gltf.scene;
+                        model.name = file.name;
+                        manager.scene.add(model);
+
+                        // 自动调整模型位置到地面上方
+                        const box = new THREE.Box3().setFromObject(model);
+                        const size = box.getSize(new THREE.Vector3());
+                        const center = box.getCenter(new THREE.Vector3());
+
+                        model.position.x += (model.position.x - center.x);
+                        model.position.y += (model.position.y - center.y) + size.y / 2;
+                        model.position.z += (model.position.z - center.z);
+
+                        console.log('✅ Model loaded:', file.name);
+                        URL.revokeObjectURL(url);
+                    }, (xhr) => {
+                        console.log(`⏳ Loading: ${(xhr.loaded / xhr.total * 100).toFixed(2)}%`);
+                    }, (error) => {
+                        console.error('❌ Error loading model:', error);
+                    });
+                } else {
+                    console.warn('⚠️ Only .glb or .gltf files are supported.');
+                }
+            }
+        }, false);
     </script>
 </body>
 
