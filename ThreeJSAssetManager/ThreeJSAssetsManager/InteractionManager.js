@@ -4,12 +4,13 @@ import config from './config.js';
 
 export default class InteractionManager {
     constructor() {
-        this.threeJSAssetsManager = new ThreeJSAssetsManager();
-        this.scene = this.threeJSAssetsManager.scene;
-        this.camera = this.threeJSAssetsManager.camera;
-        this.canvas = this.threeJSAssetsManager.canvas;
-        this.debug = this.threeJSAssetsManager.debug;
-        this.gui = this.threeJSAssetsManager.gui;
+        // 直接使用全局实例，避免重复创建
+        this.threeJSAssetsManager = window.ThreeJSAssetsManagerInstance;
+        this.scene = this.threeJSAssetsManager?.scene;
+        this.camera = this.threeJSAssetsManager?.camera;
+        this.canvas = this.threeJSAssetsManager?.canvas;
+        this.debug = this.threeJSAssetsManager?.debug;
+        this.gui = this.threeJSAssetsManager?.gui;
 
         this.config = config.Interaction || {};
         this.enabled = this.config.enabled !== false;
@@ -22,9 +23,16 @@ export default class InteractionManager {
         this.hoveredObject = null;
         this.selectedObject = null;
         this.isDragging = false;
+        this.isRotating = false;
         this.dragPlane = new THREE.Plane();
         this.dragOffset = new THREE.Vector3();
         this.intersectionPoint = new THREE.Vector3();
+
+        // Interaction parameters
+        this.rotateSpeed = 0.01;
+        this.scaleSpeed = 0.1;
+        this.minScale = 0.1;
+        this.maxScale = 5.0;
 
         // Event callbacks
         this.onHoverCallbacks = [];
@@ -48,70 +56,59 @@ export default class InteractionManager {
         this.canvas.addEventListener('click', this.onClick.bind(this));
         this.canvas.addEventListener('mousedown', this.onMouseDown.bind(this));
         this.canvas.addEventListener('mouseup', this.onMouseUp.bind(this));
+        this.canvas.addEventListener('wheel', this.onWheel.bind(this), { passive: false });
+        this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
         console.log('InteractionManager initialized');
-        // Bind event listeners
-        this.canvas.addEventListener('mousemove', this.onMouseMove.bind(this));
-        if (!this.enabled) return;
-        this.canvas.addEventListener('mousedown', this.onMouseDown.bind(this));
-        this.canvas.addEventListener('mouseup', this.onMouseUp.bind(this));
-        this.canvas.addEventListener('wheel', this.onWheel.bind(this), { passive: false }); // Add wheel listener
-        this.canvas.addEventListener('contextmenu', (e) => e.preventDefault()); // Prevent context menu
+    }
 
-        console.log('InteractionManager initialized');
+    onWheel(event) {
+        if (!this.enabled || !this.hoveredObject) return;
 
-        // Handle hover
-        if (intersects.length > 0) {
-            const object = intersects[0].object;
-            if (this.hoveredObject !== object) {
-                this.hoveredObject = object;
-                this.onHoverCallbacks.forEach(cb => cb(object, intersects[0]));
+        event.preventDefault();
 
-                if (this.config.highlightOnHover) {
-                    this.canvas.style.cursor = 'pointer';
-                }
+        const targetObject = this.findRootInteractiveObject(this.hoveredObject);
+
+        if (targetObject) {
+            const scaleFactor = 1 + (event.deltaY < 0 ? this.scaleSpeed : -this.scaleSpeed);
+
+            // Apply scale
+            const newScale = targetObject.scale.x * scaleFactor;
+
+            // Clamp scale
+            if (newScale >= this.minScale && newScale <= this.maxScale) {
+                targetObject.scale.multiplyScalar(scaleFactor);
+                // console.log('Scaling:', targetObject.name, targetObject.scale.x);
             }
-        } else {
-            if (this.hoveredObject) {
-                this.hoveredObject = null;
-                this.canvas.style.cursor = 'default';
-            }
-        }
-
-        // Handle dragging
-        if (this.isDragging && this.selectedObject) {
-            this.raycaster.ray.intersectPlane(this.dragPlane, this.intersectionPoint);
-            this.selectedObject.position.copy(this.intersectionPoint).sub(this.dragOffset);
-    onMouseMove(event) {
         }
     }
-        // Calculate mouse position in normalized device coordinates
 
-    onClick(event) {
+    onMouseMove(event) {
         if (!this.enabled) return;
+
+        // Calculate mouse position in normalized device coordinates
+        const rect = this.canvas.getBoundingClientRect();
+        this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
         // Handle Rotation
         if (this.isRotating && this.selectedObject) {
             const deltaX = event.movementX;
-            const deltaY = event.movementY;
+            // const deltaY = event.movementY;
 
             // Rotate around Y axis (horizontal mouse movement)
             this.selectedObject.rotation.y += deltaX * this.rotateSpeed;
-
-            // Optional: Rotate around X axis (vertical mouse movement)
-            // this.selectedObject.rotation.x += deltaY * this.rotateSpeed;
 
             return; // Skip other checks while rotating
         }
 
         // Update raycaster
-        const rect = this.canvas.getBoundingClientRect();
+        this.raycaster.setFromCamera(this.mouse, this.camera);
 
-        // Check for intersections - 确保深入遍历所有子对象
-        // 特别针对GLB模型，需要正确检测到其中的网格
+        // Check for intersections
         const intersects = this.raycaster.intersectObjects(this.scene.children, true);
 
-        // 过滤出可交互的对象
+        // Filter interactive objects
         const interactiveIntersects = intersects.filter(intersect => {
             return intersect.object.userData && intersect.object.userData.interactive;
         });
@@ -120,7 +117,7 @@ export default class InteractionManager {
         if (interactiveIntersects.length > 0) {
             const object = interactiveIntersects[0].object;
             if (this.hoveredObject !== object) {
-                // 重置之前悬停的对象
+                // Reset previous hover
                 if (this.hoveredObject && this.hoveredObject.userData && this.config.highlightOnHover) {
                     this.resetObjectHighlight(this.hoveredObject);
                 }
@@ -135,7 +132,7 @@ export default class InteractionManager {
             }
         } else {
             if (this.hoveredObject) {
-                // 重置悬停对象的高亮效果
+                // Reset hover
                 if (this.hoveredObject.userData && this.config.highlightOnHover) {
                     this.resetObjectHighlight(this.hoveredObject);
                 }
@@ -145,22 +142,19 @@ export default class InteractionManager {
         }
 
         // Handle dragging
-        this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-        this.raycaster.setFromCamera(this.mouse, this.camera);
+        if (this.isDragging && this.selectedObject) {
+            this.raycaster.ray.intersectPlane(this.dragPlane, this.intersectionPoint);
 
-            // 拖动时找到对象的根节点（模型组）
             const targetObject = this.findRootInteractiveObject(this.selectedObject);
             if (targetObject) {
                 targetObject.position.copy(this.intersectionPoint).sub(this.dragOffset);
                 this.onDragCallbacks.forEach(cb => cb(targetObject, this.intersectionPoint));
             }
-
-            console.log('Clicked object:', object.name || object.type);
         }
     }
 
-    onMouseDown(event) {
-        if (!this.enabled || !this.config.enableDrag) return;
+    onClick(event) {
+        if (!this.enabled) return;
 
         const rect = this.canvas.getBoundingClientRect();
         this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
@@ -169,29 +163,132 @@ export default class InteractionManager {
         this.raycaster.setFromCamera(this.mouse, this.camera);
         const intersects = this.raycaster.intersectObjects(this.scene.children, true);
 
-        if (intersects.length > 0) {
-            const object = intersects[0].object;
-            this.selectedObject = object;
-            this.isDragging = true;
+        const interactiveIntersects = intersects.filter(intersect => {
+            return intersect.object.userData && intersect.object.userData.interactive;
+        });
 
-            // Set up drag plane
-            const normal = new THREE.Vector3(0, 1, 0); // Horizontal plane
-            this.dragPlane.setFromNormalAndCoplanarPoint(normal, intersects[0].point);
+        if (interactiveIntersects.length > 0) {
+            const clickedMesh = interactiveIntersects[0].object;
+            const rootObject = this.findRootInteractiveObject(clickedMesh);
 
-            this.raycaster.ray.intersectPlane(this.dragPlane, this.intersectionPoint);
-            this.dragOffset.copy(this.intersectionPoint).sub(object.position);
+            if (rootObject) {
+                this.selectedObject = rootObject;
+                this.onClickCallbacks.forEach(cb => cb(rootObject, interactiveIntersects[0]));
+                // console.log('Clicked object:', rootObject.name || rootObject.type);
+            }
+        }
+    }
 
-            this.onDragStartCallbacks.forEach(cb => cb(object, intersects[0]));
+    onMouseDown(event) {
+        if (!this.enabled) return;
+
+        const rect = this.canvas.getBoundingClientRect();
+        this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+        this.raycaster.setFromCamera(this.mouse, this.camera);
+        const intersects = this.raycaster.intersectObjects(this.scene.children, true);
+
+        const interactiveIntersects = intersects.filter(intersect => {
+            return intersect.object.userData && intersect.object.userData.interactive;
+        });
+
+        if (interactiveIntersects.length > 0) {
+            const clickedMesh = interactiveIntersects[0].object;
+            const rootObject = this.findRootInteractiveObject(clickedMesh);
+
+            if (rootObject) {
+                this.selectedObject = rootObject;
+
+                // Left Click (0) -> Drag
+                if (event.button === 0 && this.config.enableDrag) {
+                    this.isDragging = true;
+
+                    const normal = new THREE.Vector3(0, 1, 0); // Horizontal plane
+                    this.dragPlane.setFromNormalAndCoplanarPoint(normal, interactiveIntersects[0].point);
+
+                    this.raycaster.ray.intersectPlane(this.dragPlane, this.intersectionPoint);
+                    this.dragOffset.copy(this.intersectionPoint).sub(rootObject.position);
+
+                    this.onDragStartCallbacks.forEach(cb => cb(rootObject, interactiveIntersects[0]));
+                }
+
+                // Right Click (2) -> Rotate
+                if (event.button === 2) {
+                    this.isRotating = true;
+                }
+            }
         }
     }
 
     onMouseUp(event) {
-        if (!this.enabled || !this.isDragging) return;
+        if (!this.enabled) return;
 
-        this.isDragging = false;
-        if (this.selectedObject) {
-            this.onDragEndCallbacks.forEach(cb => cb(this.selectedObject));
+        if (this.isDragging) {
+            this.isDragging = false;
+            if (this.selectedObject) {
+                this.onDragEndCallbacks.forEach(cb => cb(this.selectedObject));
+            }
         }
+
+        if (this.isRotating) {
+            this.isRotating = false;
+        }
+    }
+
+    // Helper methods
+    highlightObject(object) {
+        if (!object.userData || !object.userData.originalMaterial) return;
+
+        if (!object.userData.highlighted) {
+            object.userData.highlighted = true;
+            if (Array.isArray(object.material)) {
+                object.userData.tempMaterials = object.material.map(mat => mat.clone());
+                object.material = object.material.map(mat => {
+                    const newMat = mat.clone();
+                    newMat.emissive.setHex(0x444444);
+                    newMat.emissiveIntensity = 0.5;
+                    return newMat;
+                });
+            } else {
+                const newMat = object.userData.originalMaterial.clone();
+                newMat.emissive.setHex(0x444444);
+                newMat.emissiveIntensity = 0.5;
+                object.material = newMat;
+            }
+        }
+    }
+
+    resetObjectHighlight(object) {
+        if (!object.userData || !object.userData.highlighted) return;
+
+        object.userData.highlighted = false;
+
+        if (Array.isArray(object.userData.tempMaterials)) {
+            object.material = object.userData.tempMaterials;
+            delete object.userData.tempMaterials;
+        } else if (object.userData.originalMaterial) {
+            object.material = object.userData.originalMaterial;
+        }
+    }
+
+    findRootInteractiveObject(object) {
+        let current = object;
+        let parent = object.parent;
+
+        while (parent && parent.name !== 'GLBMainGroup' && parent.type !== 'Scene') {
+            if (parent.name && parent.name.includes('Horse')) {
+                return parent;
+            }
+            current = parent;
+            parent = parent.parent;
+        }
+
+        return current;
+    }
+
+    update() {
+        // Update loop
     }
 
     // Public API for registering callbacks
@@ -218,7 +315,9 @@ export default class InteractionManager {
     setupDebugGUI() {
         if (!this.gui) return;
 
-        const folder = this.gui.addFolder('Interaction(交互系统)');
+        // 添加到交互与事件分类下
+        const interactionFolder = this.gui.interactionFolder || this.gui.addFolder('🖱️ Interaction (交互系统)');
+        const folder = interactionFolder.addFolder('Interaction(交互系统)');
 
         folder.add(this, 'enabled').name('启用(Enabled)');
 
@@ -230,19 +329,28 @@ export default class InteractionManager {
             folder.add(this.config, 'highlightOnHover').name('悬停高亮(Highlight on Hover)');
         }
 
+        folder.add(this, 'rotateSpeed', 0.001, 0.1).name('旋转速度(Rotate Speed)');
+        folder.add(this, 'scaleSpeed', 0.01, 0.5).name('缩放速度(Scale Speed)');
+
         // Debug info
         const debugInfo = {
             hoveredObject: 'None',
-            selectedObject: 'None'
+            selectedObject: 'None',
+            state: 'Idle'
         };
 
         folder.add(debugInfo, 'hoveredObject').name('悬停对象(Hovered)').listen();
         folder.add(debugInfo, 'selectedObject').name('选中对象(Selected)').listen();
+        folder.add(debugInfo, 'state').name('当前状态(State)').listen();
 
         // Update debug info
         setInterval(() => {
             debugInfo.hoveredObject = this.hoveredObject ? (this.hoveredObject.name || this.hoveredObject.type) : 'None';
             debugInfo.selectedObject = this.selectedObject ? (this.selectedObject.name || this.selectedObject.type) : 'None';
+
+            if (this.isDragging) debugInfo.state = 'Dragging';
+            else if (this.isRotating) debugInfo.state = 'Rotating';
+            else debugInfo.state = 'Idle';
         }, 100);
     }
 }

@@ -72,7 +72,16 @@
     </script>
 
     <!-- Cannon.js for Physics -->
-    <script src="https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"></script>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://gcore.jsdelivr.net/npm/three@0.179.1/build/three.module.js",
+            "three/addons/": "https://gcore.jsdelivr.net/npm/three@0.179.1/examples/jsm/",
+            "lil-gui": "https://gcore.jsdelivr.net/npm/lil-gui@0.18.1/dist/lil-gui.esm.min.js",
+            "cannon-es": "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"
+        }
+    }
+    </script>
 </head>
 
 <body>
@@ -125,20 +134,6 @@
 
         // 添加一些测试对象
         setTimeout(() => {
-            // 添加测试立方体
-            const geometry = new THREE.BoxGeometry(1, 1, 1);
-            const material = new THREE.MeshStandardMaterial({
-                color: 0x00ff88,
-                metalness: 0.5,
-                roughness: 0.5
-            });
-            const cube = new THREE.Mesh(geometry, material);
-            cube.position.set(0, 0.5, 0);
-            cube.castShadow = true;
-            cube.receiveShadow = true;
-            cube.name = 'TestCube';
-            manager.scene.add(cube);
-
             // 添加地面
             const groundGeometry = new THREE.PlaneGeometry(10, 10);
             const groundMaterial = new THREE.MeshStandardMaterial({

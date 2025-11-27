@@ -4,10 +4,11 @@ import config from './config.js';
 
 export default class ParticleManager {
     constructor() {
-        this.threeJSAssetsManager = new ThreeJSAssetsManager();
-        this.scene = this.threeJSAssetsManager.scene;
-        this.debug = this.threeJSAssetsManager.debug;
-        this.gui = this.threeJSAssetsManager.gui;
+        // 直接使用全局实例，避免重复创建
+        this.threeJSAssetsManager = window.ThreeJSAssetsManagerInstance;
+        this.scene = this.threeJSAssetsManager?.scene;
+        this.debug = this.threeJSAssetsManager?.debug;
+        this.gui = this.threeJSAssetsManager?.gui;
 
         this.config = config.Particles || {};
         this.particleSystems = [];
@@ -150,7 +151,8 @@ export default class ParticleManager {
     setupDebugGUI() {
         if (!this.gui) return;
 
-        const folder = this.gui.addFolder('Particles(粒子系统)');
+        // 使用DebugUI中定义的particleFolder
+        const folder = this.gui.particleFolder || (this.gui.effectsFolder || this.gui.addFolder('✨ Effects (特效系统)')).addFolder('🎆 Particles (粒子系统)');
 
         this.particleSystems.forEach((system, index) => {
             const systemFolder = folder.addFolder(system.mesh.name);

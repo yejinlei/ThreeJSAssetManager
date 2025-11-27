@@ -4,11 +4,12 @@ import ThreeJSAssetsManager from "../ThreeJSAssetsManager.js";
 
 export default class AnimationManager {
   constructor() {
-    this.threejsassetsmanagerInstance = new ThreeJSAssetsManager();
-    this.scene = this.threejsassetsmanagerInstance.scene;
-    this.canvas = this.threejsassetsmanagerInstance.canvas;
-    this.debug = this.threejsassetsmanagerInstance.debug;
-    this.gui = this.threejsassetsmanagerInstance.gui;
+    // 使用全局实例避免创建重复实例
+    this.threejsassetsmanagerInstance = window.ThreeJSAssetsManagerInstance;
+    this.scene = this.threejsassetsmanagerInstance?.scene;
+    this.canvas = this.threejsassetsmanagerInstance?.canvas;
+    this.debug = this.threejsassetsmanagerInstance?.debug;
+    this.gui = this.threejsassetsmanagerInstance?.gui;
     this.animations = [];
     this.animation = {};
     
@@ -27,52 +28,94 @@ export default class AnimationManager {
       return;
     }
 
-    // 遍历场景中的所有mesh
+    // 初始化混合器数组
+    this.animation.mixers = {};
+    
+    // 正确处理所有类型的对象
     this.scene.traverse((object) => {
-      
+      // 为Mesh对象处理动画
       if (object.isMesh) {
-
         // 检查骨骼动画
         if (object.skeleton) {
-          this.animation.mixer = new AnimationMixer(object);
-          this.animation.actions = {};
+          // 为骨骼动画创建混合器
+          if (!this.animation.mixers[object.uuid]) {
+            this.animation.mixers[object.uuid] = new AnimationMixer(object);
+          }
+          const mixer = this.animation.mixers[object.uuid];
           
           // 处理骨骼动画
           if (object.animations && object.animations.length > 0) {
             object.animations.forEach((clip, index) => {
-              const name = clip.name || `skeletal_animation_${index}`;
-              this.animation.actions[name] = this.animation.mixer.clipAction(clip);
+              const name = clip.name || `skeletal_animation_${object.name}_${index}`;
+              this.animation.actions[name] = mixer.clipAction(clip);
             });
           }
         }
         
         // 检查变形动画
-        if (object.morphTargetInfluences) {
-          if (!this.animation.mixer) {
-            this.animation.mixer = new AnimationMixer(object);
-            this.animation.actions = {};
+        if (object.geometry && object.morphTargetInfluences && object.morphTargetDictionary) {
+          // 为变形动画创建混合器
+          if (!this.animation.mixers[object.uuid]) {
+            this.animation.mixers[object.uuid] = new AnimationMixer(object);
           }
+          const mixer = this.animation.mixers[object.uuid];
           
           // 处理变形动画
-          if (object.morphTargetDictionary) {
-            Object.keys(object.morphTargetDictionary).forEach((name, index) => {
-              const clipName = `morph_animation_${name}_${index}`;
+          Object.keys(object.morphTargetDictionary).forEach((name, index) => {
+            const clipName = `morph_animation_${object.name}_${name}_${index}`;
+            // 创建变形动画的clip
+            const tracks = [];
+            const times = [0, 1];
+            const values = [0, 1];
+            
+            tracks.push(new NumberKeyframeTrack(
+                  `.morphTargetInfluences[${object.morphTargetDictionary[name]}]`,
+                  times,
+                  values
+                ));
+            
+            const clip = new AnimationClip(clipName, -1, tracks);
+            this.animation.actions[clipName] = mixer.clipAction(clip);
+          });
+        }
+      }
+      // 单独处理Group对象中的子对象，避免在Group本身上查找morphTargetInfluences
+      else if (object.isGroup) {
+        // 为Group名称为AnimatedMorphSphere的对象添加特殊处理
+        if (object.name === 'AnimatedMorphSphere') {
+          console.log('Processing AnimatedMorphSphere group');
+        }
+        
+        // 递归检查Group的子对象，但不包括Group本身
+        object.children.forEach(child => {
+          if (child.isMesh && child.geometry && child.morphTargetInfluences && child.morphTargetDictionary) {
+            // 为Group中的子对象创建单独的动画混合器
+            if (!this.animation.mixers[child.uuid]) {
+              this.animation.mixers[child.uuid] = new AnimationMixer(child);
+            }
+            const mixer = this.animation.mixers[child.uuid];
+            
+            // 处理子对象的变形动画
+            Object.keys(child.morphTargetDictionary).forEach((name, index) => {
+              const clipName = `morph_animation_${object.name || 'group'}_${child.name || 'mesh'}_${name}_${index}`;
               // 创建变形动画的clip
               const tracks = [];
               const times = [0, 1];
               const values = [0, 1];
               
+              // 路径是相对于混合器目标对象(child)的
               tracks.push(new NumberKeyframeTrack(
-                `.morphTargetInfluences[${object.morphTargetDictionary[name]}]`,
+                `.morphTargetInfluences[${child.morphTargetDictionary[name]}]`,
                 times,
                 values
               ));
               
               const clip = new AnimationClip(clipName, -1, tracks);
-              this.animation.actions[clipName] = this.animation.mixer.clipAction(clip);
+              // 使用子对象自己的混合器
+              this.animation.actions[clipName] = mixer.clipAction(clip);
             });
           }
-        }
+        });
       }
     });
     
@@ -119,7 +162,7 @@ export default class AnimationManager {
   
   addDebugUI() {
     
-    const animationFolder = this.gui.addFolder('Animation');
+    const animationFolder = this.gui.animationFolder || this.gui.addFolder('🎬 Animation System (动画系统)');
     const debugObject = {};
     
     // 为每个动画添加播放按钮
@@ -145,8 +188,19 @@ export default class AnimationManager {
   }
   
   update(deltaTime) {
+    const timeScale = this.animation.timeScale || 1.0;
+    const delta = deltaTime * 0.001 * timeScale;
+    
+    // 更新单个混合器（针对直接附加到对象上的动画）
     if (this.animation.mixer) {
-      this.animation.mixer.update(deltaTime * 0.001 * (this.animation.timeScale || 1.0));
+      this.animation.mixer.update(delta);
+    }
+    
+    // 更新所有子对象的混合器（针对Group中的对象）
+    if (this.animation.mixers) {
+      Object.values(this.animation.mixers).forEach(mixer => {
+        if (mixer) mixer.update(delta);
+      });
     }
   }
   

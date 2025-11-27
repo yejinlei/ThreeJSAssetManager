@@ -1,8 +1,8 @@
-import { TextureLoader, CubeTextureLoader, EquirectangularReflectionMapping }from 'three';
+import { TextureLoader, CubeTextureLoader, EquirectangularReflectionMapping } from 'three';
 import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import ThreeJSAssetsManager from '../ThreeJSAssetsManager.js'
+import ThreeJSAssetsManager from '../ThreeJSAssetsManager.js';
 
 import EventEmitter from './EventEmitter.js';
 

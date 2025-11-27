@@ -4,10 +4,11 @@ import config from './config.js';
 
 export default class ShaderManager {
     constructor() {
-        this.threeJSAssetsManager = new ThreeJSAssetsManager();
-        this.scene = this.threeJSAssetsManager.scene;
-        this.debug = this.threeJSAssetsManager.debug;
-        this.gui = this.threeJSAssetsManager.gui;
+        // 直接使用全局实例，避免重复创建
+        this.threeJSAssetsManager = window.ThreeJSAssetsManagerInstance;
+        this.scene = this.threeJSAssetsManager?.scene;
+        this.debug = this.threeJSAssetsManager?.debug;
+        this.gui = this.threeJSAssetsManager?.gui;
 
         this.config = config.Shaders || {};
         this.shaderMaterials = new Map();
@@ -144,7 +145,12 @@ export default class ShaderManager {
     setupDebugGUI() {
         if (!this.gui) return;
 
-        const folder = this.gui.addFolder('Shaders(着色器)');
+        // 确保shaderFolder存在，如果不存在则创建
+        const folder = this.gui.shaderFolder || this.gui.addFolder('Shaders');
+        // 保存对folder的引用，避免重复创建
+        if (!this.gui.shaderFolder) {
+            this.gui.shaderFolder = folder;
+        }
 
         const actions = {
             createAnimatedShader: () => {

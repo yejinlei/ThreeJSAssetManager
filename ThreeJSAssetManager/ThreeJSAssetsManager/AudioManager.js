@@ -4,11 +4,12 @@ import config from './config.js';
 
 export default class AudioManager {
     constructor() {
-        this.threeJSAssetsManager = new ThreeJSAssetsManager();
-        this.scene = this.threeJSAssetsManager.scene;
-        this.camera = this.threeJSAssetsManager.camera;
-        this.debug = this.threeJSAssetsManager.debug;
-        this.gui = this.threeJSAssetsManager.gui;
+        // 直接使用全局实例，避免重复创建
+        this.threeJSAssetsManager = window.ThreeJSAssetsManagerInstance;
+        this.scene = this.threeJSAssetsManager?.scene;
+        this.camera = this.threeJSAssetsManager?.camera;
+        this.debug = this.threeJSAssetsManager?.debug;
+        this.gui = this.threeJSAssetsManager?.gui;
 
         this.config = config.Audio || {};
         this.enabled = this.config.enabled !== false;
@@ -148,7 +149,7 @@ export default class AudioManager {
     setupDebugGUI() {
         if (!this.gui) return;
 
-        const folder = this.gui.addFolder('Audio(音频系统)');
+        const folder = this.gui.audioFolder || this.gui.addFolder('🔊 Audio System (音频系统)');
 
         const controls = {
             masterVolume: 1.0,

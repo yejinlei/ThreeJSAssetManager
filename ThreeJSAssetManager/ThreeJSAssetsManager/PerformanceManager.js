@@ -4,11 +4,12 @@ import config from './config.js';
 
 export default class PerformanceManager {
     constructor() {
-        this.threeJSAssetsManager = new ThreeJSAssetsManager();
-        this.scene = this.threeJSAssetsManager.scene;
-        this.camera = this.threeJSAssetsManager.camera;
-        this.debug = this.threeJSAssetsManager.debug;
-        this.gui = this.threeJSAssetsManager.gui;
+        // 直接使用全局实例，避免重复创建
+        this.threeJSAssetsManager = window.ThreeJSAssetsManagerInstance;
+        this.scene = this.threeJSAssetsManager?.scene;
+        this.camera = this.threeJSAssetsManager?.camera;
+        this.debug = this.threeJSAssetsManager?.debug;
+        this.gui = this.threeJSAssetsManager?.gui;
 
         this.config = config.Performance || {};
         this.instancedMeshes = [];
@@ -115,7 +116,8 @@ export default class PerformanceManager {
     setupDebugGUI() {
         if (!this.gui) return;
 
-        const folder = this.gui.addFolder('Performance(性能优化)');
+        // 使用DebugUI中定义的performanceFolder
+        const folder = this.gui.performanceFolder || (this.gui.utilitiesFolder || this.gui.addFolder('🛠️ Utilities (辅助工具)')).addFolder('⚡ Performance (性能监控)');
 
         const stats = {
             instancedMeshCount: 0,

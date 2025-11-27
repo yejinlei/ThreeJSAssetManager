@@ -7,12 +7,23 @@ import { Sky } from 'three/addons/objects/Sky.js';
 import Stats from 'three/addons/libs/stats.module.js';
 import * as dat from 'lil-gui';
 
-import DebugUI from './ThreeJSAssetsManager/DebugUI.js';
-let debugUI = new DebugUI();
-let gui = debugUI.gui
-let guiFolder = debugUI.guiFolder;
+// 不再直接创建DebugUI实例，而是使用ThreeJSAssetsManager中的实例
+// 全局变量，将在ThreeJSAssetsManager初始化后设置
+let gui = null;
+let guiFolder = null;
+let debugUI = null;
 
 import SceneManager from './ThreeJSAssetsManager/SceneManager.js';
+import ThreeJSAssetsManager from './ThreeJSAssetsManager/ThreeJSAssetsManager.js';
+import config from './ThreeJSAssetsManager/config.js';
+
+// 初始化ThreeJSAssetsManager
+const ThreeJSAssetsManagerInstance = new ThreeJSAssetsManager(document.getElementById('threeCanvas'));
+
+// 设置全局gui和debugUI变量
+debugUI = ThreeJSAssetsManagerInstance.debug;
+gui = ThreeJSAssetsManagerInstance.gui;
+
 let sceneManagerInstance = new SceneManager(); 
 let scene = sceneManagerInstance.scene;
 

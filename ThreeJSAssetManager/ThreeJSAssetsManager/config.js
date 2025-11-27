@@ -130,7 +130,7 @@ export default {
     'Particles': {
         systems: [
             {
-                enabled: false,
+                enabled: true,
                 name: 'Snow',
                 count: 1000,
                 size: 0.1,

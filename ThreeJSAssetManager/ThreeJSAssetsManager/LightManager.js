@@ -21,14 +21,14 @@ export default class LightManager {
      * 构造函数，初始化灯光管理器并根据配置创建灯光。
      */
     constructor() {
-        // 获取 ThreeJSAssetsManager 的单例实例
-        this.threejsassetsmanagerInstance = new ThreeJSAssetsManager();
+        // 直接使用全局实例，避免重复创建
+        this.threejsassetsmanagerInstance = window.ThreeJSAssetsManagerInstance;
         // 从管理器实例中获取场景对象
-        this.scene = this.threejsassetsmanagerInstance.scene;
+        this.scene = this.threejsassetsmanagerInstance?.scene;
         // 从管理器实例中获取调试模式标志
-        this.debug = this.threejsassetsmanagerInstance.debug;
+        this.debug = this.threejsassetsmanagerInstance?.debug;
         // 从管理器实例中获取 GUI 对象
-        this.gui = this.threejsassetsmanagerInstance.gui;
+        this.gui = this.threejsassetsmanagerInstance?.gui;
 
         this.ambientLight = null;
         // 用于存储所有灯光的辅助对象，方便后续管理
@@ -36,8 +36,9 @@ export default class LightManager {
 
         // 检查调试模式是否开启，GUI 对象是否存在
         if (this.debug && this.gui) {
-            // 在 GUI 中创建一个名为 'LightManager(光源管理)' 的文件夹
-            const folder = this.gui.addFolder('LightManager(光源管理)');
+            // 添加到灯光系统分类下
+            const parentFolder = this.gui.lightingFolder || this.gui.addFolder('💡 Lighting System (灯光系统)');
+            const folder = parentFolder.addFolder('LightManager(光源管理)');
             
             // 环境光配置
             this.setupAmbientLightGUI(folder);

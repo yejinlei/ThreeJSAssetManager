@@ -4,12 +4,13 @@ import config from './config.js';
 
 export default class WebXRManager {
     constructor() {
-        this.threeJSAssetsManager = new ThreeJSAssetsManager();
-        this.scene = this.threeJSAssetsManager.scene;
-        this.camera = this.threeJSAssetsManager.camera;
-        this.renderer = this.threeJSAssetsManager.renderManagerInstance.webGLRenderer;
-        this.debug = this.threeJSAssetsManager.debug;
-        this.gui = this.threeJSAssetsManager.gui;
+        // 直接使用全局实例，避免重复创建
+        this.threeJSAssetsManager = window.ThreeJSAssetsManagerInstance;
+        this.scene = this.threeJSAssetsManager?.scene;
+        this.camera = this.threeJSAssetsManager?.camera;
+        this.renderer = this.threeJSAssetsManager?.renderManagerInstance?.webGLRenderer;
+        this.debug = this.threeJSAssetsManager?.debug;
+        this.gui = this.threeJSAssetsManager?.gui;
 
         this.config = config.WebXR || {};
         this.enabled = this.config.enabled !== false;
@@ -178,7 +179,7 @@ export default class WebXRManager {
     setupDebugGUI() {
         if (!this.gui) return;
 
-        const folder = this.gui.addFolder('WebXR(VR/AR)');
+        const folder = this.gui.xrFolder || this.gui.addFolder('🔮 WebXR (XR系统)');
 
         const status = {
             vrSupported: this.isVRSupported,

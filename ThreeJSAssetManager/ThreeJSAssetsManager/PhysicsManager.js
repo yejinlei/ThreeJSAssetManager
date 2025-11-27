@@ -2,16 +2,17 @@ import * as THREE from 'three';
 import ThreeJSAssetsManager from './ThreeJSAssetsManager.js';
 import config from './config.js';
 
-// Note: This requires cannon-es library
-// Install: npm install cannon-es
-// Import: import * as CANNON from 'cannon-es'
+// Import cannon-es as ES module
+// Note: This requires cannon-es to be available via importmap
+// Import map: "cannon-es": "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"
 
 export default class PhysicsManager {
     constructor() {
-        this.threeJSAssetsManager = new ThreeJSAssetsManager();
-        this.scene = this.threeJSAssetsManager.scene;
-        this.debug = this.threeJSAssetsManager.debug;
-        this.gui = this.threeJSAssetsManager.gui;
+        // 直接使用全局实例，避免重复创建
+        this.threeJSAssetsManager = window.ThreeJSAssetsManagerInstance;
+        this.scene = this.threeJSAssetsManager?.scene;
+        this.debug = this.threeJSAssetsManager?.debug;
+        this.gui = this.threeJSAssetsManager?.gui;
 
         this.config = config.Physics || {};
         this.enabled = this.config.enabled !== false;
@@ -29,17 +30,13 @@ export default class PhysicsManager {
         }
     }
 
-    init() {
-        // Check if CANNON is available
-        if (typeof CANNON === 'undefined') {
-            console.warn('PhysicsManager: cannon-es not loaded. Physics disabled.');
-            console.warn('Install: npm install cannon-es');
-            console.warn('Import in HTML: <script src="https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"></script>');
-            this.enabled = false;
-            return;
-        }
-
-        // Create physics world
+    async init() {
+        // Check if CANNON is available via importmap
+        try {
+            // Dynamically import cannon-es
+            const CANNON = await import('cannon-es');
+            
+            // Create physics world
         this.world = new CANNON.World();
         this.world.gravity.set(
             this.config.gravity?.x || 0,
@@ -59,15 +56,24 @@ export default class PhysicsManager {
         }
 
         console.log('PhysicsManager initialized');
+        
+        // Store CANNON reference for later use
+        this.CANNON = CANNON;
+        } catch (error) {
+            console.warn('PhysicsManager: cannon-es not loaded. Physics disabled.', error);
+            console.warn('Make sure cannon-es is available via importmap');
+            this.enabled = false;
+            return;
+        }
     }
 
     createGroundPlane() {
-        if (!this.world) return;
+        if (!this.world || !this.CANNON) return;
 
         // Physics body
-        const groundBody = new CANNON.Body({
+        const groundBody = new this.CANNON.Body({
             mass: 0, // Static body
-            shape: new CANNON.Plane()
+            shape: new this.CANNON.Plane()
         });
         groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
         this.world.addBody(groundBody);
@@ -86,13 +92,13 @@ export default class PhysicsManager {
 
     // Create physics body for existing mesh
     addPhysicsToMesh(mesh, options = {}) {
-        if (!this.world || !this.enabled) return null;
+        if (!this.world || !this.enabled || !this.CANNON) return null;
 
         const shape = this.createShapeFromGeometry(mesh.geometry, options.shape);
-        const body = new CANNON.Body({
+        const body = new this.CANNON.Body({
             mass: options.mass || 1,
             shape: shape,
-            position: new CANNON.Vec3(
+            position: new this.CANNON.Vec3(
                 mesh.position.x,
                 mesh.position.y,
                 mesh.position.z
@@ -107,6 +113,8 @@ export default class PhysicsManager {
     }
 
     createShapeFromGeometry(geometry, shapeType = 'box') {
+        if (!this.CANNON) return null;
+        
         if (!geometry.boundingBox) {
             geometry.computeBoundingBox();
         }
@@ -118,16 +126,16 @@ export default class PhysicsManager {
         switch (shapeType) {
             case 'sphere':
                 const radius = Math.max(size.x, size.y, size.z) / 2;
-                return new CANNON.Sphere(radius);
+                return new this.CANNON.Sphere(radius);
             case 'box':
             default:
-                return new CANNON.Box(new CANNON.Vec3(size.x / 2, size.y / 2, size.z / 2));
+                return new this.CANNON.Box(new this.CANNON.Vec3(size.x / 2, size.y / 2, size.z / 2));
         }
     }
 
     // Create a physics-enabled box
     createPhysicsBox(position = { x: 0, y: 5, z: 0 }, size = 1) {
-        if (!this.world || !this.enabled) return null;
+        if (!this.world || !this.enabled || !this.CANNON) return null;
 
         // Visual mesh
         const geometry = new THREE.BoxGeometry(size, size, size);
@@ -140,11 +148,11 @@ export default class PhysicsManager {
         this.scene.add(mesh);
 
         // Physics body
-        const shape = new CANNON.Box(new CANNON.Vec3(size / 2, size / 2, size / 2));
-        const body = new CANNON.Body({
+        const shape = new this.CANNON.Box(new this.CANNON.Vec3(size / 2, size / 2, size / 2));
+        const body = new this.CANNON.Body({
             mass: 1,
             shape: shape,
-            position: new CANNON.Vec3(position.x, position.y, position.z)
+            position: new this.CANNON.Vec3(position.x, position.y, position.z)
         });
         this.world.addBody(body);
 
@@ -172,7 +180,10 @@ export default class PhysicsManager {
     setupDebugGUI() {
         if (!this.gui) return;
 
-        const folder = this.gui.addFolder('Physics(物理引擎)');
+        // 安全地创建物理系统文件夹，避免interactionFolder不存在时出错
+        const folder = this.gui.physicsFolder || this.gui.addFolder('⚡ Physics (物理系统)');
+        // 保存folder引用以便后续使用
+        this.gui.physicsFolder = folder;
 
         folder.add(this, 'enabled').name('启用(Enabled)');
 

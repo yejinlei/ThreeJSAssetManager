@@ -1,7 +1,7 @@
-//import * as THREE from 'https://gcore.jsdelivr.net/npm/three@0.132.2/build/three.min.js'
-import { Scene, Fog, Color, Group, SRGBColorSpace } from 'three'
-import threeJSAssetsManager from './ThreeJSAssetsManager.js'
-import config from './config.js'
+// import * as THREE from 'https://gcore.jsdelivr.net/npm/three@0.132.2/build/three.min.js'
+import { Scene, Fog, Color, Group, SRGBColorSpace } from 'three';
+import threeJSAssetsManager from './ThreeJSAssetsManager.js';
+import config from './config.js';
 /**
  * 场景管理器类
  */
@@ -12,10 +12,11 @@ export default class SceneManager {
    * @param {Object} [options] - 场景配置选项
    */
   constructor(cavas, options = {}) {
-    this.threejsassetsmanagerInstance = new threeJSAssetsManager();
-    this.resources = this.threejsassetsmanagerInstance.resources;
-    this.debug = this.threejsassetsmanagerInstance.debug;
-    this.gui = this.threejsassetsmanagerInstance.gui;
+    // 直接使用全局实例，避免重复创建
+    this.threejsassetsmanagerInstance = window.ThreeJSAssetsManagerInstance;
+    this.resources = this.threejsassetsmanagerInstance?.resources;
+    this.debug = this.threejsassetsmanagerInstance?.debug;
+    this.gui = this.threejsassetsmanagerInstance?.gui;
   
     console.log(this.threejsassetsmanagerInstance);
 
@@ -105,7 +106,9 @@ export default class SceneManager {
     if (!this.debug || !this.gui) return;
     
     if (!this.scene) this.scene = new Scene();
-    this.debugFolder = this.gui.addFolder('SceneManager(场景管理)');
+    // 添加到场景与对象分类下
+    const parentFolder = this.gui.sceneFolder || this.gui.addFolder('🏞️ Scene & Objects (场景与对象)');
+    this.debugFolder = parentFolder.addFolder('SceneManager(场景管理)');
 
     // 确保场景属性存在
     if (!this.scene.background) this.scene.background = new Color(0xffffff);
