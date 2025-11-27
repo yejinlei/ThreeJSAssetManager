@@ -20,18 +20,18 @@ export default
                 rotation: {x: 0.1, y: 0.01, z: 0.01}
             }
     },
-    {
-        name: 'AnimatedMorphSphere',
-        type: 'gltfModel',
-        file: 
-            {
-                name: 'AnimatedMorphSphere',
-                path:'ThreeJSAssetsManager/World/models/AnimatedMorphSphere.gltf',
-                position: {x: 0, y: 0, z: 0},
-                scale: 0.14,
-                rotation: {x: 0, y: 1.14, z: 0}
-            }
-    }
+    // {
+    //     name: 'AnimatedMorphSphere',
+    //     type: 'gltfModel',
+    //     file: 
+    //         {
+    //             name: 'AnimatedMorphSphere',
+    //             path:'ThreeJSAssetsManager/World/models/AnimatedMorphSphere.gltf',
+    //             position: {x: 0, y: 0, z: 0},
+    //             scale: 0.14,
+    //             rotation: {x: 0, y: 1.14, z: 0}
+    //         }
+    // }
     // {
     //         name: 'Horse',
     //         type: 'glbModel',     
