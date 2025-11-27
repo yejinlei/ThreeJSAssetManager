@@ -72,8 +72,16 @@ export default class PostProcessor {
     setupDebugGUI() {
         if (!this.gui) return;
 
-        // 使用DebugUI中定义的postProcessingFolder
-        const folder = this.gui.postProcessingFolder || (this.gui.effectsFolder || this.gui.addFolder('✨ Effects (特效系统)')).addFolder('🌈 Post Processing (后期处理)');
+        // 确保effectsFolder存在
+        if (!this.gui.effectsFolder) {
+            console.warn('effectsFolder不存在，请检查DebugUI初始化顺序');
+            return;
+        }
+        
+        // 使用effectsFolder创建后期处理子目录并保存引用
+        const folder = this.gui.effectsFolder.addFolder('🌈 Post Processing (后期处理)');
+        // 保存postProcessingFolder引用到gui对象，便于其他地方使用
+        this.gui.postProcessingFolder = folder;
 
         folder.add(this, 'enabled').name('启用(Enabled)').onChange((value) => {
             if (value && !this.instance) {

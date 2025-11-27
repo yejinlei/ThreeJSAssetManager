@@ -2,8 +2,8 @@
 // 参考: Three.js官方构造函数默认值及核心组件规范
 
 export default {
-    'canvas': 'canvas01',
-    'SceneManager': {
+    canvas: 'canvas01',
+    SceneManager: {
         enabled: true,
         Color: {
             enabled: true,
@@ -25,7 +25,7 @@ export default {
             list: ['main', 'secondary']
         }
     },
-    'CameraManager': {
+    CameraManager: {
         enabled: true,
         cameraType: 'perspective',
         cameraOptions: {
@@ -35,7 +35,7 @@ export default {
             far: 2000
         }
     },
-    'LightManager': {
+    LightManager: {
         enabled: true,
         ambientLight: {
             enabled: true,
@@ -104,7 +104,7 @@ export default {
             enabled: false
         }
     },
-    'RenderManager': {
+    RenderManager: {
         enabled: true,
         clearColor: '#211d20',
         shadow: {
@@ -113,7 +113,7 @@ export default {
             resolution: 2048
         }
     },
-    'PostProcessing': {
+    PostProcessing: {
         enabled: false,
         bloom: {
             enabled: false,
@@ -122,12 +122,12 @@ export default {
             threshold: 0.85
         }
     },
-    'Interaction': {
+    Interaction: {
         enabled: true,
         enableDrag: true,
         highlightOnHover: true
     },
-    'Particles': {
+    Particles: {
         systems: [
             {
                 enabled: true,
@@ -142,27 +142,27 @@ export default {
             }
         ]
     },
-    'Performance': {
+    Performance: {
         enabled: true
     },
-    'Shaders': {
+    Shaders: {
         enabled: true
     },
-    'Physics': {
+    Physics: {
         enabled: false,
         gravity: { x: 0, y: -9.82, z: 0 },
         solverIterations: 10,
         createGround: true
     },
-    'Audio': {
+    Audio: {
         enabled: false
     },
-    'WebXR': {
+    WebXR: {
         enabled: false,
         createVRButton: true,
         createARButton: true
     },
-    'Helpers': {
+    Helpers: {
         grid: {
             enabled: false,
             size: 10,
@@ -178,7 +178,17 @@ export default {
             enabled: false
         }
     },
-    'DebugUI': {
-        enabled: false
+    DebugUI: {
+        enabled: false,
+        Utilities: {
+            enabled: true,
+            exportConfig: true
+        },
+        DragDropGLB: {
+            enabled: true
+        },
+        Effects: {
+            enabled: true
+        }
     }
 }

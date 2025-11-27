@@ -71,28 +71,33 @@ export default class ThreeJSAssetsManager {
        this.canvas = options;
      }
 
-    // 初始化调试 GUI 实例
-    this.debuguiinstance = new DebugUI();
-    this.debug = this.debuguiinstance.debug;
-    this.gui = this.debuguiinstance.gui;
-
     // 初始化资源管理器
     this.resources = new Resources(sources);
     // 初始化场景管理器并获取场景对象
-    this.sceneManagerinstance = new SceneManager(this.canvas, {debug: this.debug, gui: this.gui});
+    this.sceneManagerinstance = new SceneManager(this.canvas, {debug: false, gui: null});
     this.scene = this.sceneManagerinstance.scene
     this.mainGroup = this.sceneManagerinstance.mainGroup;
     // 初始化灯光管理器
-    this.lightManagerInstance = new LightManager({debug: this.debug, gui: this.gui});
+    this.lightManagerInstance = new LightManager({debug: false, gui: null});
     // 初始化世界渲染实例
-    this.meshManagerInstance = new MeshManager({debug: this.debug, gui: this.gui});
-    // 初始化动画管理器
-    this.animationManagerInstance = new AnimationManager({debug: this.debug, gui: this.gui});
-
+    this.meshManagerInstance = new MeshManager({debug: false, gui: null});
+    
+    // 初始化调试 GUI 实例
+    this.debuguiinstance = new DebugUI(this.sceneManagerinstance, this.meshManagerInstance);
+    this.debug = this.debuguiinstance.debug;
+    this.gui = this.debuguiinstance.gui;
     // 初始化窗口尺寸管理器和时间管理器
     this.sizes = new Sizes();
     this.time = new Time();
 
+    // 重新初始化管理器，传入正确的debug和gui参数
+    this.sceneManagerinstance = new SceneManager(this.canvas, {debug: this.debug, gui: this.gui});
+    this.scene = this.sceneManagerinstance.scene
+    this.mainGroup = this.sceneManagerinstance.mainGroup;
+    this.lightManagerInstance = new LightManager({debug: this.debug, gui: this.gui});
+    this.meshManagerInstance = new MeshManager({debug: this.debug, gui: this.gui});
+    this.animationManagerInstance = new AnimationManager({debug: this.debug, gui: this.gui});
+    
     // 初始化相机管理器并获取相机对象
     this.cameraManagerInstance = new CameraManager({debug: this.debug, gui: this.gui});
     this.camera = this.cameraManagerInstance.camera;

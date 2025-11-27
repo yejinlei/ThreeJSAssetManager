@@ -151,8 +151,16 @@ export default class ParticleManager {
     setupDebugGUI() {
         if (!this.gui) return;
 
-        // 使用DebugUI中定义的particleFolder
-        const folder = this.gui.particleFolder || (this.gui.effectsFolder || this.gui.addFolder('✨ Effects (特效系统)')).addFolder('🎆 Particles (粒子系统)');
+        // 确保effectsFolder存在
+        if (!this.gui.effectsFolder) {
+            console.warn('effectsFolder不存在，请检查DebugUI初始化顺序');
+            return;
+        }
+        
+        // 使用effectsFolder创建粒子系统子目录并保存引用
+        const folder = this.gui.effectsFolder.addFolder('🎆 Particles (粒子系统)');
+        // 保存particleFolder引用到gui对象，便于其他地方使用
+        this.gui.particleFolder = folder;
 
         this.particleSystems.forEach((system, index) => {
             const systemFolder = folder.addFolder(system.mesh.name);
