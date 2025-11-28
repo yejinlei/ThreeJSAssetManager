@@ -200,7 +200,7 @@ export default {
     },
 
     DebugUI: {
-        enabled: false,
+        enabled: true,
         Utilities: {
             enabled: true,
             exportConfig: true
