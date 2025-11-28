@@ -17,7 +17,7 @@ export default class SceneManager {
     this.resources = this.threejsassetsmanagerInstance?.resources;
     this.debug = this.threejsassetsmanagerInstance?.debug;
     this.gui = this.threejsassetsmanagerInstance?.gui;
-  
+
     console.log(this.threejsassetsmanagerInstance);
 
     this.cavas = cavas;
@@ -30,20 +30,19 @@ export default class SceneManager {
 
     this.resources.on('ready', () => {
       // 遍历所有资源
-      this.resources.sources.forEach(object =>
-      {
-          if(object.type === "rgbeLoader" && object.name === "environment"){
-            this.scene.background = this.resources.items['environment'];
-            this.scene.environment = this.resources.items['environment'];
-          }
+      this.resources.sources.forEach(object => {
+        if (object.type === "rgbeLoader" && object.name === "environment") {
+          this.scene.background = this.resources.items['environment'];
+          this.scene.environment = this.resources.items['environment'];
+        }
       })
-  });
+    });
 
 
     this.confScene();
     this.confGUI();
     this.modelVisibility = {}; // 模型可见性状态
-    
+
     // 应用配置选项
     // 背景颜色
     // if (options.background) {
@@ -52,7 +51,7 @@ export default class SceneManager {
     //   this.scene.background = new THREE.Color(0xffffff);
     // }
   }
-  
+
   /**
    * 设置当前场景对象
    * @param {THREE.Scene} scene - 要设置的新场景对象
@@ -70,12 +69,12 @@ export default class SceneManager {
   }
 
   confScene() {
-  
-    if(!(config['SceneManager'] || {}).enabled)
-      return; 
+
+    if (!(config['SceneManager'] || {}).enabled)
+      return;
 
 
-    console.log('SceneManager:confScene函数，配置：',(config['SceneManager'] || {}));
+    console.log('SceneManager:confScene函数，配置：', (config['SceneManager'] || {}));
     // 背景颜色
     if ((config['SceneManager'] || {}).Color.enabled) {
       console.log((config['SceneManager'] || {}).Color.value);
@@ -98,22 +97,22 @@ export default class SceneManager {
     // if (sceneConfig.shadow) {
     //   this.setupShadows(sceneConfig.shadow);
     // }
-    
+
   }
 
-  confGUI()
-  {
+  confGUI() {
     if (!this.debug || !this.gui) return;
-    
+
     if (!this.scene) this.scene = new Scene();
     // 添加到场景与对象分类下
     const parentFolder = this.gui.sceneFolder || this.gui.addFolder('🏞️ Scene & Objects (场景与对象)');
     this.debugFolder = parentFolder.addFolder('SceneManager(场景管理)');
 
-    // 确保场景属性存在
+    // 确保场景属性存在 - 但不强制创建雾效
     if (!this.scene.background) this.scene.background = new Color(0xffffff);
-    if (!this.scene.fog) this.scene.fog = new Fog(0xcccccc, 10, 50);
-    if (this.scene.fog && !this.scene.fog.color) this.scene.fog.color = new Color(0xcccccc);
+    // 移除强制雾效初始化 - 雾效应该由 confScene() 根据配置创建
+    // if (!this.scene.fog) this.scene.fog = new Fog(0xcccccc, 10, 50);
+    // if (this.scene.fog && !this.scene.fog.color) this.scene.fog.color = new Color(0xcccccc);
     if (!this.scene.environment) this.scene.environment = new Color(0xffffff);
 
     // 背景颜色控制
@@ -123,7 +122,7 @@ export default class SceneManager {
     };
     bgFolder.addColor(bgColor, 'value').name('背景色').onChange((val) => {
       this.scene.background = new Color(val);
-      console.log('config:this.scene.background', val.toString(16));  
+      console.log('config:this.scene.background', val.toString(16));
     });
 
     // 雾效控制 - 极简版
@@ -133,13 +132,13 @@ export default class SceneManager {
       color: config['SceneManager'].fog.color,
       near: config['SceneManager'].fog.near,
       far: config['SceneManager'].fog.far,
-      
+
       // 更新场景雾效
       update: () => {
         if (fog.enabled) {
           // 创建新的雾效
           this.scene.fog = new Fog(fog.color, fog.near, fog.far);
-          
+
           // 如果参数控制文件夹不存在，则创建
           if (!this._fogControls) {
             this._createFogControls();
@@ -150,7 +149,7 @@ export default class SceneManager {
         } else {
           // 销毁雾效对象
           this.scene.fog = null;
-          
+
           // 销毁参数控制文件夹
           if (this._fogControls) {
             this._fogControls.hide();
@@ -158,27 +157,27 @@ export default class SceneManager {
         }
       }
     };
-    
+
     // 保存雾效实例引用
     this._fog = fog;
-    
+
     // 创建控制器 - 只保留启用选项
     fogFolder.add(fog, 'enabled').name('启用').onChange(fog.update);
-    
+
     // 创建雾效参数控制文件夹的方法
     this._createFogControls = () => {
       // 创建参数控制文件夹
       this._fogControls = fogFolder.addFolder('参数');
-      
+
       // 添加参数控制器
       this._fogControls.addColor(this._fog, 'color').name('颜色').onChange(this._fog.update);
       this._fogControls.add(this._fog, 'near', 0, 100).name('近距离').onChange(this._fog.update);
       this._fogControls.add(this._fog, 'far', 0, 1000).name('远距离').onChange(this._fog.update);
-      
+
       // 根据启用状态设置参数文件夹可见性
       this._fog.enabled ? this._fogControls.show() : this._fogControls.hide();
     };
-    
+
     // 初始化时，如果雾效已启用，则创建参数控制文件夹
     if (fog.enabled) {
       this._createFogControls();
@@ -245,7 +244,7 @@ export default class SceneManager {
     if (this.scene) {
       this.scene.fog = null;
     }
-    
+
     // 清理雾效相关资源
     if (this._fogControls) {
       // 销毁参数控制文件夹
@@ -254,10 +253,10 @@ export default class SceneManager {
       }
       this._fogControls = null;
     }
-    
+
     // 清理雾效实例引用
     this._fog = null;
-    
+
     // 清理GUI相关资源
     if (this.debugFolder) {
       // 移除所有子文件夹和控制器
@@ -269,25 +268,23 @@ export default class SceneManager {
           }
         });
       }
-      
+
       // 销毁主文件夹
       if (typeof this.debugFolder.destroy === 'function') {
         this.debugFolder.destroy();
       }
-      
+
       this.debugFolder = null;
     }
-    
+
     // 清理其他资源
     this.modelVisibility = null;
-    
+
     console.log('SceneManager: 资源已清理');
   }
 }
 
-class ModelsManager 
-{
-  constructor(THREE) 
-  {
+class ModelsManager {
+  constructor(THREE) {
   }
 }

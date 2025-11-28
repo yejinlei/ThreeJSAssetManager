@@ -41,9 +41,12 @@ import PhysicsManager from './PhysicsManager.js'
 import AudioManager from './AudioManager.js'
 // 导入WebXR管理模块
 import WebXRManager from './WebXRManager.js'
+// 导入默认配置
+import defaultConfig from './config.js'
 
 // 单例模式的实例变量，初始化为 null
 let instance = null;
+
 /**
  * ThreeJSAssetsManager 类用于管理 Three.js 项目的核心资源和功能，
  * 采用单例模式确保全局只有一个实例。
@@ -51,9 +54,10 @@ let instance = null;
 export default class ThreeJSAssetsManager {
   /**
    * 构造函数，初始化 Three.js 项目所需的各种管理器和资源。
-   * @param {HTMLCanvasElement} canvas - 用于渲染 Three.js 场景的画布元素。
+   * @param {HTMLCanvasElement|Object} canvasOrOptions - 画布元素或包含 container 的选项对象
+   * @param {Object} customConfig - 可选的自定义配置对象，将深度合并到默认配置中
    */
-  constructor(options) {
+  constructor(canvasOrOptions, customConfig = null) {
     // 全局只有一个单例，若实例已存在则直接返回
     if (instance) {
       return instance;
@@ -63,25 +67,36 @@ export default class ThreeJSAssetsManager {
     // 将实例挂载到 window 对象上，防止被垃圾回收
     window.ThreeJSAssetsManagerInstance = this;
 
+    // 如果提供了自定义配置，直接覆盖默认配置
+    if (customConfig) {
+      // 清空默认配置的所有属性
+      for (const key in defaultConfig) {
+        delete defaultConfig[key];
+      }
+      // 将自定义配置的属性复制到默认配置对象中
+      Object.assign(defaultConfig, customConfig);
+      console.log('✅ Custom config replaced default config in ThreeJSAssetsManager');
+    }
+
     // 兼容不同的参数传递方式
-     if (options && typeof options === 'object' && options.container) {
-       this.canvas = options.container;
-     } else {
-       // 如果直接传入canvas元素
-       this.canvas = options;
-     }
+    if (canvasOrOptions && typeof canvasOrOptions === 'object' && canvasOrOptions.container) {
+      this.canvas = canvasOrOptions.container;
+    } else {
+      // 如果直接传入canvas元素
+      this.canvas = canvasOrOptions;
+    }
 
     // 初始化资源管理器
     this.resources = new Resources(sources);
     // 初始化场景管理器并获取场景对象
-    this.sceneManagerinstance = new SceneManager(this.canvas, {debug: false, gui: null});
+    this.sceneManagerinstance = new SceneManager(this.canvas, { debug: false, gui: null });
     this.scene = this.sceneManagerinstance.scene
     this.mainGroup = this.sceneManagerinstance.mainGroup;
     // 初始化灯光管理器
-    this.lightManagerInstance = new LightManager({debug: false, gui: null});
+    this.lightManagerInstance = new LightManager({ debug: false, gui: null });
     // 初始化世界渲染实例
-    this.meshManagerInstance = new MeshManager({debug: false, gui: null});
-    
+    this.meshManagerInstance = new MeshManager({ debug: false, gui: null });
+
     // 初始化调试 GUI 实例
     this.debuguiinstance = new DebugUI(this.sceneManagerinstance, this.meshManagerInstance);
     this.debug = this.debuguiinstance.debug;
@@ -91,36 +106,36 @@ export default class ThreeJSAssetsManager {
     this.time = new Time();
 
     // 重新初始化管理器，传入正确的debug和gui参数
-    this.sceneManagerinstance = new SceneManager(this.canvas, {debug: this.debug, gui: this.gui});
+    this.sceneManagerinstance = new SceneManager(this.canvas, { debug: this.debug, gui: this.gui });
     this.scene = this.sceneManagerinstance.scene
     this.mainGroup = this.sceneManagerinstance.mainGroup;
-    this.lightManagerInstance = new LightManager({debug: this.debug, gui: this.gui});
-    this.meshManagerInstance = new MeshManager({debug: this.debug, gui: this.gui});
-    this.animationManagerInstance = new AnimationManager({debug: this.debug, gui: this.gui});
-    
+    this.lightManagerInstance = new LightManager({ debug: this.debug, gui: this.gui });
+    this.meshManagerInstance = new MeshManager({ debug: this.debug, gui: this.gui });
+    this.animationManagerInstance = new AnimationManager({ debug: this.debug, gui: this.gui });
+
     // 初始化相机管理器并获取相机对象
-    this.cameraManagerInstance = new CameraManager({debug: this.debug, gui: this.gui});
+    this.cameraManagerInstance = new CameraManager({ debug: this.debug, gui: this.gui });
     this.camera = this.cameraManagerInstance.camera;
     // 初始化渲染管理器
-    this.renderManagerInstance = new RenderManager({debug: this.debug, gui: this.gui});
+    this.renderManagerInstance = new RenderManager({ debug: this.debug, gui: this.gui });
     // 初始化后期处理器
-    this.postProcessor = new PostProcessor({debug: this.debug, gui: this.gui});
+    this.postProcessor = new PostProcessor({ debug: this.debug, gui: this.gui });
     // 初始化辅助工具管理器
-    this.helperManager = new HelperManager({debug: this.debug, gui: this.gui});
+    this.helperManager = new HelperManager({ debug: this.debug, gui: this.gui });
     // 初始化交互系统管理器
-    this.interactionManager = new InteractionManager({debug: this.debug, gui: this.gui});
+    this.interactionManager = new InteractionManager({ debug: this.debug, gui: this.gui });
     // 初始化粒子系统管理器
-    this.particleManager = new ParticleManager({debug: this.debug, gui: this.gui});
+    this.particleManager = new ParticleManager({ debug: this.debug, gui: this.gui });
     // 初始化性能优化管理器
-    this.performanceManager = new PerformanceManager({debug: this.debug, gui: this.gui});
+    this.performanceManager = new PerformanceManager({ debug: this.debug, gui: this.gui });
     // 初始化着色器管理器
-    this.shaderManager = new ShaderManager({debug: this.debug, gui: this.gui});
+    this.shaderManager = new ShaderManager({ debug: this.debug, gui: this.gui });
     // 初始化物理引擎管理器
-    this.physicsManager = new PhysicsManager({debug: this.debug, gui: this.gui});
+    this.physicsManager = new PhysicsManager({ debug: this.debug, gui: this.gui });
     // 初始化音频系统管理器
-    this.audioManager = new AudioManager({debug: this.debug, gui: this.gui});
+    this.audioManager = new AudioManager({ debug: this.debug, gui: this.gui });
     // 初始化WebXR管理器
-    this.webXRManager = new WebXRManager({debug: this.debug, gui: this.gui});
+    this.webXRManager = new WebXRManager({ debug: this.debug, gui: this.gui });
 
     // 为窗口尺寸变化事件注册监听器，当窗口尺寸变化时调用 resize 方法
     this.sizes.on('resize', () => {

@@ -31,7 +31,8 @@ export default class ParticleManager {
     }
 
     createParticleSystem(systemConfig, index) {
-        const count = systemConfig.count || 1000;
+        // 从 config.js 读取所有值，不使用硬编码默认值
+        const count = systemConfig.count;
         const geometry = new THREE.BufferGeometry();
 
         // Create positions
@@ -39,8 +40,8 @@ export default class ParticleManager {
         const colors = new Float32Array(count * 3);
         const sizes = new Float32Array(count);
 
-        const spread = systemConfig.spread || 10;
-        const color = new THREE.Color(systemConfig.color || 0xffffff);
+        const spread = systemConfig.spread;
+        const color = new THREE.Color(systemConfig.color);
 
         for (let i = 0; i < count; i++) {
             const i3 = i * 3;
@@ -56,7 +57,7 @@ export default class ParticleManager {
             colors[i3 + 2] = color.b;
 
             // Size
-            sizes[i] = systemConfig.size || 0.1;
+            sizes[i] = systemConfig.size;
         }
 
         geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
@@ -65,11 +66,11 @@ export default class ParticleManager {
 
         // Material
         const material = new THREE.PointsMaterial({
-            size: systemConfig.size || 0.1,
+            size: systemConfig.size,
             sizeAttenuation: systemConfig.sizeAttenuation !== false,
             vertexColors: systemConfig.vertexColors !== false,
             transparent: systemConfig.transparent !== false,
-            opacity: systemConfig.opacity || 0.8,
+            opacity: systemConfig.opacity,
             blending: systemConfig.blending || THREE.AdditiveBlending,
             depthWrite: false
         });
@@ -82,11 +83,12 @@ export default class ParticleManager {
         const particles = new THREE.Points(geometry, material);
         particles.name = systemConfig.name || `ParticleSystem_${index}`;
 
+        // 从 config.js 读取位置，不使用默认值
         if (systemConfig.position) {
             particles.position.set(
-                systemConfig.position.x || 0,
-                systemConfig.position.y || 0,
-                systemConfig.position.z || 0
+                systemConfig.position.x,
+                systemConfig.position.y,
+                systemConfig.position.z
             );
         }
 
@@ -102,7 +104,7 @@ export default class ParticleManager {
 
     generateVelocities(count, config) {
         const velocities = new Float32Array(count * 3);
-        const speed = config.speed || 0.01;
+        const speed = config.speed;
 
         for (let i = 0; i < count; i++) {
             const i3 = i * 3;
@@ -120,7 +122,7 @@ export default class ParticleManager {
 
             const positions = system.mesh.geometry.attributes.position.array;
             const velocities = system.velocities;
-            const spread = system.config.spread || 10;
+            const spread = system.config.spread;
 
             for (let i = 0; i < positions.length; i += 3) {
                 positions[i] += velocities[i];
@@ -156,7 +158,7 @@ export default class ParticleManager {
             console.warn('effectsFolder不存在，请检查DebugUI初始化顺序');
             return;
         }
-        
+
         // 使用effectsFolder创建粒子系统子目录并保存引用
         const folder = this.gui.effectsFolder.addFolder('🎆 Particles (粒子系统)');
         // 保存particleFolder引用到gui对象，便于其他地方使用
@@ -165,11 +167,71 @@ export default class ParticleManager {
         this.particleSystems.forEach((system, index) => {
             const systemFolder = folder.addFolder(system.mesh.name);
 
+            // 基础控制
             systemFolder.add(system.mesh, 'visible').name('显示(Visible)');
             systemFolder.add(system.config, 'animate').name('动画(Animate)');
             systemFolder.add(system.config, 'rotate').name('旋转(Rotate)');
-            systemFolder.add(system.mesh.material, 'opacity', 0, 1, 0.01).name('不透明度(Opacity)');
-            systemFolder.add(system.mesh.material, 'size', 0.01, 1, 0.01).name('大小(Size)');
+
+            // 外观控制
+            const appearanceFolder = systemFolder.addFolder('外观(Appearance)');
+            appearanceFolder.add(system.mesh.material, 'opacity', 0, 1, 0.01).name('不透明度(Opacity)');
+            appearanceFolder.add(system.mesh.material, 'size', 0.01, 1, 0.01).name('大小(Size)');
+
+            // 颜色控制 - 转换为十六进制格式
+            const colorControl = {
+                color: '#' + system.config.color.toString(16).padStart(6, '0')
+            };
+            appearanceFolder.addColor(colorControl, 'color').name('颜色(Color)').onChange((value) => {
+                const newColor = new THREE.Color(value);
+                const colors = system.mesh.geometry.attributes.color.array;
+                for (let i = 0; i < colors.length; i += 3) {
+                    colors[i] = newColor.r;
+                    colors[i + 1] = newColor.g;
+                    colors[i + 2] = newColor.b;
+                }
+                system.mesh.geometry.attributes.color.needsUpdate = true;
+                system.config.color = parseInt(value.replace('#', ''), 16);
+            });
+
+            // 动画控制
+            const animationFolder = systemFolder.addFolder('动画(Animation)');
+            animationFolder.add(system.config, 'speed', 0, 0.1, 0.001).name('速度(Speed)').onChange((value) => {
+                // 重新生成速度
+                const velocities = system.velocities;
+                const count = velocities.length / 3;
+                for (let i = 0; i < count; i++) {
+                    const i3 = i * 3;
+                    velocities[i3] = (Math.random() - 0.5) * value;
+                    velocities[i3 + 1] = (Math.random() - 0.5) * value;
+                    velocities[i3 + 2] = (Math.random() - 0.5) * value;
+                }
+            });
+            animationFolder.add(system.config, 'spread', 1, 100, 1).name('扩散范围(Spread)');
+
+            // 位置控制
+            const positionFolder = systemFolder.addFolder('位置(Position)');
+            positionFolder.add(system.mesh.position, 'x', -50, 50, 0.1).name('X');
+            positionFolder.add(system.mesh.position, 'y', -50, 50, 0.1).name('Y');
+            positionFolder.add(system.mesh.position, 'z', -50, 50, 0.1).name('Z');
+
+            // 注意：count 参数需要重新创建粒子系统，这里添加一个信息提示
+            const info = {
+                particleCount: system.config.count,
+                recreate: () => {
+                    if (confirm(`确定要重新创建粒子系统吗？当前粒子数: ${system.config.count}`)) {
+                        // 移除旧的粒子系统
+                        this.scene.remove(system.mesh);
+                        system.mesh.geometry.dispose();
+                        system.mesh.material.dispose();
+
+                        // 重新创建
+                        this.createParticleSystem(system.config, index);
+                        console.log('粒子系统已重新创建');
+                    }
+                }
+            };
+            systemFolder.add(info, 'particleCount').name('粒子数量(Count)').listen();
+            systemFolder.add(info, 'recreate').name('🔄 重新创建(Recreate)');
         });
     }
 }

@@ -1,8 +1,10 @@
-// Three.js 应用配置文件 - 恢复为官方默认参数
-// 参考: Three.js官方构造函数默认值及核心组件规范
+// Three.js 应用配置文件 - 完整配置
+// 所有参数都在此定义，Manager 不使用硬编码默认值
+// DebugUI 可视化调整后导出此配置
 
 export default {
     canvas: 'canvas01',
+
     SceneManager: {
         enabled: true,
         Color: {
@@ -25,6 +27,7 @@ export default {
             list: ['main', 'secondary']
         }
     },
+
     CameraManager: {
         enabled: true,
         cameraType: 'perspective',
@@ -35,6 +38,7 @@ export default {
             far: 2000
         }
     },
+
     LightManager: {
         enabled: true,
         ambientLight: {
@@ -104,15 +108,18 @@ export default {
             enabled: false
         }
     },
+
     RenderManager: {
         enabled: true,
+        toneMapping: 'CineonToneMapping', // 可选: NoToneMapping, LinearToneMapping, ReinhardToneMapping, CineonToneMapping, ACESFilmicToneMapping
+        toneMappingExposure: 1.75,
         clearColor: '#211d20',
         shadow: {
             enabled: false,
-            type: 'PCFSoftShadowMap',
-            resolution: 2048
+            type: 'PCFSoftShadowMap' // 可选: BasicShadowMap, PCFShadowMap, PCFSoftShadowMap, VSMShadowMap
         }
     },
+
     PostProcessing: {
         enabled: false,
         bloom: {
@@ -122,11 +129,13 @@ export default {
             threshold: 0.78
         }
     },
+
     Interaction: {
         enabled: true,
         enableDrag: true,
         highlightOnHover: true
     },
+
     Particles: {
         systems: [
             {
@@ -136,32 +145,43 @@ export default {
                 size: 0.1,
                 spread: 20,
                 color: 0xffffff,
+                opacity: 0.8,
                 animate: true,
                 speed: 0.01,
-                rotate: false
+                rotate: false,
+                position: { x: 0, y: 0, z: 0 }
             }
         ]
     },
+
     Performance: {
         enabled: true
     },
+
     Shaders: {
         enabled: true
     },
+
     Physics: {
         enabled: false,
         gravity: { x: 0, y: -9.82, z: 0 },
         solverIterations: 10,
         createGround: true
     },
+
     Audio: {
-        enabled: false
+        enabled: false,
+        volume: 0.5,
+        loop: false,
+        refDistance: 1
     },
+
     WebXR: {
         enabled: false,
         createVRButton: true,
         createARButton: true
     },
+
     Helpers: {
         grid: {
             enabled: false,
@@ -178,6 +198,7 @@ export default {
             enabled: false
         }
     },
+
     DebugUI: {
         enabled: false,
         Utilities: {

@@ -35,30 +35,30 @@ export default class PhysicsManager {
         try {
             // Dynamically import cannon-es
             const CANNON = await import('cannon-es');
-            
+
             // Create physics world
-        this.world = new CANNON.World();
-        this.world.gravity.set(
-            this.config.gravity?.x || 0,
-            this.config.gravity?.y || -9.82,
-            this.config.gravity?.z || 0
-        );
+            this.world = new CANNON.World();
+            this.world.gravity.set(
+                this.config.gravity.x,
+                this.config.gravity.y,
+                this.config.gravity.z
+            );
 
-        // Set solver iterations for better stability
-        this.world.solver.iterations = this.config.solverIterations || 10;
+            // Set solver iterations for better stability
+            this.world.solver.iterations = this.config.solverIterations;
 
-        // Broadphase for collision detection optimization
-        this.world.broadphase = new CANNON.NaiveBroadphase();
+            // Broadphase for collision detection optimization
+            this.world.broadphase = new CANNON.NaiveBroadphase();
 
-        // Create ground plane
-        if (this.config.createGround !== false) {
-            this.createGroundPlane();
-        }
+            // Create ground plane
+            if (this.config.createGround !== false) {
+                this.createGroundPlane();
+            }
 
-        console.log('PhysicsManager initialized');
-        
-        // Store CANNON reference for later use
-        this.CANNON = CANNON;
+            console.log('PhysicsManager initialized');
+
+            // Store CANNON reference for later use
+            this.CANNON = CANNON;
         } catch (error) {
             console.warn('PhysicsManager: cannon-es not loaded. Physics disabled.', error);
             console.warn('Make sure cannon-es is available via importmap');
@@ -114,7 +114,7 @@ export default class PhysicsManager {
 
     createShapeFromGeometry(geometry, shapeType = 'box') {
         if (!this.CANNON) return null;
-        
+
         if (!geometry.boundingBox) {
             geometry.computeBoundingBox();
         }
@@ -192,6 +192,11 @@ export default class PhysicsManager {
             gravityFolder.add(this.world.gravity, 'x', -20, 20, 0.1).name('X');
             gravityFolder.add(this.world.gravity, 'y', -20, 20, 0.1).name('Y');
             gravityFolder.add(this.world.gravity, 'z', -20, 20, 0.1).name('Z');
+
+            // Solver settings
+            folder.add(this.world.solver, 'iterations', 1, 50, 1).name('求解器迭代次数(Solver Iterations)').onChange((value) => {
+                this.config.solverIterations = value;
+            });
 
             const actions = {
                 createBox: () => {
