@@ -20,6 +20,18 @@ export default
                 rotation: {x: 0.1, y: 0.01, z: 0.01}
             }
     },
+    {
+        name: 'Stork',
+        type: 'glbModel',
+        file: 
+            {
+                name: 'Stork',
+                path: 'models/Stork.glb',
+                position: {x: 0, y: 0.5, z: 0}, // 位置更低
+                scale: 0.3, // 更小的缩放比例
+                rotation: {x: 0, y: 0, z: 0}
+            }
+    },
     // {
     //     name: 'AnimatedMorphSphere',
     //     type: 'gltfModel',

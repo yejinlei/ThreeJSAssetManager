@@ -6,6 +6,7 @@ import ThreeJSAssetsManager from "./ThreeJSAssetsManager.js";
 
 // 导入 Horse 类，注意这里文件名大小写可能存在问题
 import Horse from "./World/horse.js";
+import Stork from "./World/Stork.js";
 
 /**
  * MeshManager 类用于管理场景中的网格对象，包括加载资源和创建几何体。
@@ -13,26 +14,84 @@ import Horse from "./World/horse.js";
 export default class MeshManager {
     /**
      * 构造函数，初始化 MeshManager 实例。
+     * @param {Object} options - 配置选项对象
      */
-    constructor() {
-        // 直接使用全局实例，避免重复创建
-        this.threejsassetsmanagerInstance = window.ThreeJSAssetsManagerInstance;
-        // 从管理器实例中获取场景对象
-        this.scene = this.threejsassetsmanagerInstance?.scene;
-
-        // 从管理器实例中获取资源对象
-        this.resources = this.threejsassetsmanagerInstance?.resources;
-        // 从管理器实例中获取调试模式标志
-        this.debug = this.threejsassetsmanagerInstance?.debug;
-        // 从管理器实例中获取 GUI 对象
-        this.gui = this.threejsassetsmanagerInstance?.gui;
-        // 从管理器实例中获取几何体对象
-        this.geometries = this.threejsassetsmanagerInstance?.geometries;
+    constructor(options = {}) {
+        // 保存配置选项
+        this.manager = options.manager;
+        this.debug = options.debug;
+        this.gui = options.gui;
+        
+        // 从主管理器或全局实例获取场景和资源
+        if (this.manager) {
+            this.scene = this.manager.scene;
+            this.resources = this.manager.resources;
+            this.geometries = this.manager.geometries;
+            // 获取配置 - 优先从主管理器获取，确保使用最新配置
+            this.config = this.manager.getConfig('MeshManager') || {};
+        } else {
+            // 回退到全局实例
+            const globalInstance = window.ThreeJSAssetsManagerInstance;
+            this.scene = globalInstance?.scene;
+            this.resources = globalInstance?.resources;
+            this.geometries = globalInstance?.geometries;
+            this.config = {};
+        }
+        
+        console.log('🏗️ MeshManager: 初始化网格管理器');
+        console.log('🏗️ MeshManager: 使用配置:', this.config);
+        
+        // 保存 GLB 模型引用的对象
+        this.glbModels = {};
+        // 保存加载的 GLB 文件信息
+        this.loadedGlbs = [];
         // 初始化一个数组，用于存储 Horse 实例
-        this.horses = [];
-
-        // 调用异步初始化方法
-        this.init();
+    this.horses = [];
+    // 初始化一个数组，用于存储 Stork 实例
+    this.storks = [];
+    // 保存 GLB 模型引用的对象
+    this.glbModels = {};
+    // 保存加载的 GLB 文件信息
+    this.loadedGlbs = [];
+    // 用于调试的 GUI 文件夹引用
+    this.modelsFolder = null;
+    
+    // 查找场景中的 GLBMainGroup 对象，如果不存在则创建
+    this.glbmaingroup = this.scene?.children.find(object => object.name === 'GLBMainGroup');
+    if (!this.glbmaingroup && this.scene) {
+      const { Group } = require('three');
+      this.glbmaingroup = new Group();
+      this.glbmaingroup.name = 'GLBMainGroup';
+      this.scene.add(this.glbmaingroup);
+      console.log('✅ GLBMainGroup 已创建');
+    }
+    
+    // 初始化模型配置
+    this.initializeModels();
+    
+    // 调用异步初始化方法
+    this.init();
+  }
+  
+  /**
+   * 初始化模型配置和加载设置
+   */
+  initializeModels() {
+    console.log('🏗️ MeshManager: 初始化模型配置');
+    
+    // 如果配置中指定了要自动加载的模型，这里可以添加逻辑
+    if (this.config.autoLoadModels && Array.isArray(this.config.autoLoadModels)) {
+      console.log('🏗️ 准备自动加载模型:', this.config.autoLoadModels);
+    }
+    
+    // 设置模型默认参数
+    this.modelDefaults = {
+      scale: this.config.defaultScale || 1,
+      position: this.config.defaultPosition || { x: 0, y: 0, z: 0 },
+      rotation: this.config.defaultRotation || { x: 0, y: 0, z: 0 }
+    };
+    
+    console.log('🏗️ 模型默认参数:', this.modelDefaults);
     }
 
     async init() {
@@ -43,19 +102,25 @@ export default class MeshManager {
                 this.resources.sources.forEach(object => {
                     // 如果资源类型为 'glbModel' 或 'gltfModel'
                     if (object.type === 'glbModel' || object.type === 'gltfModel') {
-                        // 只对Horse相关的模型使用Horse类
-                        if (object.name.toLowerCase().includes('horse')) {
-                            // 创建一个新的 Horse 实例并添加到 horses 数组中
-                            this.horses.push(new Horse(object.name));
-                        } else {
-                            // 对于其他模型，直接添加到场景中
-                            const gltf = this.resources.items[object.name];
-                            if (gltf && gltf.scene) {
-                                gltf.scene.name = object.name;
-                                this.scene.add(gltf.scene);
-                                console.log(`Added model: ${object.name} to scene`);
-                            }
+                        // 对Horse相关的模型使用Horse类
+                    if (object.name.toLowerCase().includes('horse')) {
+                        // 创建一个新的 Horse 实例并添加到 horses 数组中
+                        this.horses.push(new Horse(object.name));
+                    } 
+                    // 对Stork相关的模型使用Stork类
+                    else if (object.name.toLowerCase().includes('stork')) {
+                        // 创建一个新的 Stork 实例并添加到 storks 数组中
+                        this.storks.push(new Stork(object.name));
+                    }
+                    else {
+                        // 对于其他模型，直接添加到场景中
+                        const gltf = this.resources.items[object.name];
+                        if (gltf && gltf.scene) {
+                            gltf.scene.name = object.name;
+                            this.scene.add(gltf.scene);
+                            console.log(`Added model: ${object.name} to scene`);
                         }
+                    }
                     }
                 });
                 resolve();
@@ -64,63 +129,100 @@ export default class MeshManager {
         // 从管理器实例中获取场景中的 GLBMainGroup 对象
         this.glbmaingroup = this.scene.children.find(object => object.name === 'GLBMainGroup');
 
-        // 如果处于调试模式且 GUI 对象存在
+        // 设置调试UI
         if (this.debug && this.gui) {
-            // 在对象管理文件夹中添加网格管理
-            this.gui.meshFolder = (this.gui.objectsFolder || this.gui.addFolder('📦 Objects (对象管理)')).addFolder('MeshManager(网格管理)');
+            this.setupDebugUI();
+        }
+    }
 
-            // 添加测试功能的文件夹
-            const MeshOperatorFolder = this.gui.meshFolder.addFolder('测试功能');
+    /**
+     * 设置调试UI
+     */
+    setupDebugUI() {
+        console.log('🏗️ MeshManager: 设置调试UI');
+        // 创建调试面板
+        this.debugFolder = (this.gui.objectsFolder || this.gui.addFolder('📦 Objects (对象管理)')).addFolder('🏗️ MeshManager(网格管理)');
+        this.setupMeshDebugUI(this.debugFolder);
+        this.debugFolder.close();
+    }
+    
+    /**
+     * 设置网格调试面板
+     * @param {Object} folder - lil-gui 文件夹
+     */
+    setupMeshDebugUI(folder) {
+        // 添加加载状态指示器
+        folder.add({ status: '等待资源加载' }, 'status').name('加载状态');
+        
+        // 创建加载控制按钮
+        const loaderControls = {
+            loadAllModels: () => this.loadAllModels(),
+            clearAllModels: () => this.clearAllModels(),
+        };
+        
+        folder.add(loaderControls, 'loadAllModels').name('加载所有模型');
+        folder.add(loaderControls, 'clearAllModels').name('清除所有模型');
+        
+        // 创建文件夹用于管理各个模型
+        this.modelsFolder = folder.addFolder('模型控制');
+        
+        // 添加测试功能的文件夹
+        const MeshOperatorFolder = folder.addFolder('测试功能');
 
-            // 添加控制所有 GLB 模型可见性的控件
-            const glbAllVisibilityFolder = MeshOperatorFolder.addFolder('控制所有GLB模型可见性');
-            const glbVisibilityParams = {
-                show: true,
-                setVisibility: () => {
-                    this.setAllGlbVisibility(glbVisibilityParams.show);
-                }
-            };
-            glbAllVisibilityFolder.add(glbVisibilityParams, 'show').name('显示所有GLB模型');
-            glbAllVisibilityFolder.add(glbVisibilityParams, 'setVisibility').name('应用设置');
+        // 添加控制所有 GLB 模型可见性的控件
+        const glbAllVisibilityFolder = MeshOperatorFolder.addFolder('控制所有GLB模型可见性');
+        const glbVisibilityParams = {
+            show: true,
+            setVisibility: () => {
+                this.setAllGlbVisibility(glbVisibilityParams.show);
+            }
+        };
+        glbAllVisibilityFolder.add(glbVisibilityParams, 'show').name('显示所有GLB模型');
+        glbAllVisibilityFolder.add(glbVisibilityParams, 'setVisibility').name('应用设置');
 
-            // 添加获取 glb 模型树的控件
-            const glbSingleVisibilityFolder = MeshOperatorFolder.addFolder('控制单独GLB模型树:');
-            const glbSingleVisibilityParams = {
-                glbName: '',
-                show: true,
-                setVisibility: () => {
-                    console.log('glbSingleVisibilityParams:', glbSingleVisibilityParams);
-                    this.setSingleGlbVisibility(glbSingleVisibilityParams.glbName, glbSingleVisibilityParams.show);
-                }
-            };
-            glbSingleVisibilityFolder.add(glbSingleVisibilityParams, 'glbName').name('GLB名称');
-            glbSingleVisibilityFolder.add(glbSingleVisibilityParams, 'show').name('显示模型');
-            glbSingleVisibilityFolder.add(glbSingleVisibilityParams, 'setVisibility').name('应用设置');
+        // 添加获取 glb 模型树的控件
+        const glbSingleVisibilityFolder = MeshOperatorFolder.addFolder('控制单独GLB模型树:');
+        const glbSingleVisibilityParams = {
+            glbName: '',
+            show: true,
+            setVisibility: () => {
+                console.log('glbSingleVisibilityParams:', glbSingleVisibilityParams);
+                this.setSingleGlbVisibility(glbSingleVisibilityParams.glbName, glbSingleVisibilityParams.show);
+            }
+        };
+        glbSingleVisibilityFolder.add(glbSingleVisibilityParams, 'glbName').name('GLB名称');
+        glbSingleVisibilityFolder.add(glbSingleVisibilityParams, 'show').name('显示模型');
+        glbSingleVisibilityFolder.add(glbSingleVisibilityParams, 'setVisibility').name('应用设置');
 
-            // 添加获取场景中 mesh 集合的控件
-            const sceneMeshesFolder = MeshOperatorFolder.addFolder('获取SCENE中的Mesh集合');
+        // 添加获取场景中 mesh 集合的控件
+        const sceneMeshesFolder = MeshOperatorFolder.addFolder('获取SCENE中的Mesh集合');
 
-            const sceneMeshesParams = {
-                meshName: '',
-                isRegex: false,
-                show: false,
-                filter: 'include',
-                getMeshes: () => {
-                    const meshes = this.getMeshesInScene(sceneMeshesParams.meshName, sceneMeshesParams.isRegex, sceneMeshesParams.filter);
-                    meshes.forEach(mesh => { mesh.visible = show })
-                }
-            };
-            sceneMeshesFolder.add(sceneMeshesParams, 'meshName').name('Mesh 名称').onChange((value) => {
-                sceneMeshesParams.meshName = value;
-            });
-            sceneMeshesFolder.add(sceneMeshesParams, 'isRegex').name('使用正则匹配').onChange((value) => {
-                sceneMeshesParams.isRegex = value;
-            });
-            sceneMeshesFolder.add(sceneMeshesParams, 'show').name('显示Mesh').onChange((value) => {
-                sceneMeshesParams.show = value;
-            });
-            sceneMeshesFolder.add(sceneMeshesParams, 'getMeshes').name('应用设置').onChange((value) => {
-                sceneMeshesParams.getMeshes();
+        const sceneMeshesParams = {
+            meshName: '',
+            isRegex: false,
+            show: false,
+            filter: 'include',
+            getMeshes: () => {
+                const meshes = this.getMeshesInScene(sceneMeshesParams.meshName, sceneMeshesParams.isRegex, sceneMeshesParams.filter);
+                meshes.forEach(mesh => { mesh.visible = sceneMeshesParams.show })
+            }
+        };
+        sceneMeshesFolder.add(sceneMeshesParams, 'meshName').name('Mesh 名称').onChange((value) => {
+            sceneMeshesParams.meshName = value;
+        });
+        sceneMeshesFolder.add(sceneMeshesParams, 'isRegex').name('使用正则匹配').onChange((value) => {
+            sceneMeshesParams.isRegex = value;
+        });
+        sceneMeshesFolder.add(sceneMeshesParams, 'show').name('显示Mesh').onChange((value) => {
+            sceneMeshesParams.show = value;
+        });
+        sceneMeshesFolder.add(sceneMeshesParams, 'getMeshes').name('应用设置');
+        
+        // 监听资源加载完成事件
+        if (this.resources) {
+            this.resources.on('ready', () => {
+                console.log('🏗️ 所有资源加载完成，更新调试面板');
+                this.updateDebugUI();
             });
         }
 
@@ -582,11 +684,43 @@ export default class MeshManager {
     }
 
     /**
-     * 更新方法，遍历所有 Horse 实例并调用其 update 方法。
+     * 更新调试UI
+     */
+    updateDebugUI() {
+        console.log('🏗️ MeshManager: 更新调试UI');
+        // 在这里更新调试UI，例如添加模型控制器等
+        if (this.modelsFolder) {
+            // 可以在这里添加已加载模型的控制器
+            this.modelsFolder.close();
+        }
+    }
+
+    /**
+     * 加载所有模型
+     */
+    loadAllModels() {
+        console.log('🏗️ MeshManager: 加载所有模型');
+        // 实现加载所有模型的逻辑
+        this.setAllGlbVisibility(true);
+    }
+
+    /**
+     * 清除所有模型
+     */
+    clearAllModels() {
+        console.log('🏗️ MeshManager: 清除所有模型');
+        // 实现清除所有模型的逻辑
+        this.setAllGlbVisibility(false);
+    }
+
+    /**
+     * 更新方法，遍历所有 Horse 和 Stork 实例并调用其 update 方法。
      */
     update() {
         // 遍历所有 Horse 实例并调用其 update 方法
         this.horses.forEach(horse => horse.update());
+        // 遍历所有 Stork 实例并调用其 update 方法
+        this.storks.forEach(stork => stork.update());
     }
 
     /**
