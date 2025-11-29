@@ -14,7 +14,7 @@ export default class DebugUI
      * 该函数会根据当前 URL 的哈希值判断是否启用调试模式，
      * 若启用则创建一个 lil-gui 调试界面。
      */
-    constructor(sceneManager, meshManager)
+    constructor(sceneManager = null, meshManager = null)
     {
         // 保存管理器引用
         this.sceneManager = sceneManager;
@@ -93,6 +93,17 @@ export default class DebugUI
             console.log('🔄 正在复位参数...');
             location.reload();
         }
+    }
+    
+    /**
+     * 设置场景管理器和网格管理器引用
+     * @param {SceneManager} sceneManager - 场景管理器实例
+     * @param {MeshManager} meshManager - 网格管理器实例
+     */
+    setManagers(sceneManager, meshManager) {
+        this.sceneManager = sceneManager;
+        this.meshManager = meshManager;
+        console.log('✅ DebugUI: 管理器引用已更新');
     }
     
     /**

@@ -4,9 +4,8 @@ import { BoxGeometry, MeshBasicMaterial, MeshStandardMaterial, Mesh, PlaneGeomet
 // 导入 ThreeJSAssetsManager 类
 import ThreeJSAssetsManager from "./ThreeJSAssetsManager.js";
 
-// 导入 Horse 类，注意这里文件名大小写可能存在问题
-import Horse from "./World/horse.js";
-import Stork from "./World/Stork.js";
+// 导入通用的 ModelLoader 类
+import ModelLoader from "./World/ModelLoader.js";
 
 /**
  * MeshManager 类用于管理场景中的网格对象，包括加载资源和创建几何体。
@@ -42,17 +41,12 @@ export default class MeshManager {
         console.log('🏗️ MeshManager: 使用配置:', this.config);
         
         // 保存 GLB 模型引用的对象
-        this.glbModels = {};
-        // 保存加载的 GLB 文件信息
-        this.loadedGlbs = [];
-        // 初始化一个数组，用于存储 Horse 实例
-    this.horses = [];
-    // 初始化一个数组，用于存储 Stork 实例
-    this.storks = [];
-    // 保存 GLB 模型引用的对象
     this.glbModels = {};
     // 保存加载的 GLB 文件信息
     this.loadedGlbs = [];
+    // 初始化通用模型数组
+    this.models = [];
+    this.modelInstances = {};
     // 用于调试的 GUI 文件夹引用
     this.modelsFolder = null;
     
@@ -95,6 +89,7 @@ export default class MeshManager {
     }
 
     async init() {
+        console.log('🏗️ MeshManager: 初始化');
         // 封装资源加载完成事件为 Promise
         await new Promise((resolve) => {
             this.resources.on('ready', () => {
@@ -102,25 +97,36 @@ export default class MeshManager {
                 this.resources.sources.forEach(object => {
                     // 如果资源类型为 'glbModel' 或 'gltfModel'
                     if (object.type === 'glbModel' || object.type === 'gltfModel') {
-                        // 对Horse相关的模型使用Horse类
-                    if (object.name.toLowerCase().includes('horse')) {
-                        // 创建一个新的 Horse 实例并添加到 horses 数组中
-                        this.horses.push(new Horse(object.name));
-                    } 
-                    // 对Stork相关的模型使用Stork类
-                    else if (object.name.toLowerCase().includes('stork')) {
-                        // 创建一个新的 Stork 实例并添加到 storks 数组中
-                        this.storks.push(new Stork(object.name));
-                    }
-                    else {
-                        // 对于其他模型，直接添加到场景中
-                        const gltf = this.resources.items[object.name];
-                        if (gltf && gltf.scene) {
-                            gltf.scene.name = object.name;
-                            this.scene.add(gltf.scene);
-                            console.log(`Added model: ${object.name} to scene`);
+                        try {
+                            // 检查模型是否已经存在，避免重复创建
+                            if (this.modelInstances[object.name]) {
+                                console.warn(`🏗️ MeshManager: 模型 "${object.name}" 已存在，跳过重复创建`);
+                                return;
+                            }
+                            
+                            console.log(`Creating model with ModelLoader: ${object.name}`);
+                            // 使用通用ModelLoader创建模型实例
+                            const model = new ModelLoader(object.name);
+                            
+                            // 保存到模型数组和实例映射中
+                            this.models.push(model);
+                            this.modelInstances[object.name] = model;
+                            
+                            // 将模型实例保存到资源管理器实例中以便外部访问
+                            if (window.ThreeJSAssetsManagerInstance) {
+                                window.ThreeJSAssetsManagerInstance[object.name.toLowerCase()] = model;
+                            }
+                            console.log(`Successfully created and registered model: ${object.name}`);
+                        } catch (error) {
+                            console.error(`Failed to create model ${object.name}:`, error);
+                            // 如果ModelLoader创建失败，尝试直接添加模型到场景
+                            const gltf = this.resources.items[object.name];
+                            if (gltf && gltf.scene) {
+                                gltf.scene.name = object.name;
+                                this.scene.add(gltf.scene);
+                                console.log(`Fallback: Added GLB model directly: ${object.name}`);
+                            }
                         }
-                    }
                     }
                 });
                 resolve();
@@ -140,8 +146,47 @@ export default class MeshManager {
      */
     setupDebugUI() {
         console.log('🏗️ MeshManager: 设置调试UI');
-        // 创建调试面板
-        this.debugFolder = (this.gui.objectsFolder || this.gui.addFolder('📦 Objects (对象管理)')).addFolder('🏗️ MeshManager(网格管理)');
+        
+        // 使用顶部导入的ModelLoader类及其静态属性来避免重复创建Objects和MeshManager文件夹
+        
+        // 确保只有一个Objects文件夹
+        if (!ModelLoader.globalObjectsFolder && this.gui) {
+            // 查找现有Objects文件夹
+            if (this.gui.__folders && Array.isArray(this.gui.__folders)) {
+                for (let folder of this.gui.__folders) {
+                    if (folder && (folder.name.includes('Objects') || folder.name.includes('对象管理'))) {
+                        ModelLoader.globalObjectsFolder = folder;
+                        break;
+                    }
+                }
+            }
+            
+            // 如果没找到，创建新的
+            if (!ModelLoader.globalObjectsFolder && this.gui.addFolder) {
+                ModelLoader.globalObjectsFolder = this.gui.addFolder('📦 Objects (对象管理)');
+            }
+        }
+        
+        // 确保只有一个MeshManager文件夹
+        if (!ModelLoader.globalMeshManagerFolder && ModelLoader.globalObjectsFolder) {
+            // 查找现有MeshManager文件夹
+            if (ModelLoader.globalObjectsFolder.__folders && Array.isArray(ModelLoader.globalObjectsFolder.__folders)) {
+                for (let folder of ModelLoader.globalObjectsFolder.__folders) {
+                    if (folder && (folder.name.includes('MeshManager') || folder.name.includes('网格管理'))) {
+                        ModelLoader.globalMeshManagerFolder = folder;
+                        break;
+                    }
+                }
+            }
+            
+            // 如果没找到，创建新的
+            if (!ModelLoader.globalMeshManagerFolder && ModelLoader.globalObjectsFolder.addFolder) {
+                ModelLoader.globalMeshManagerFolder = ModelLoader.globalObjectsFolder.addFolder('🏗️ MeshManager(网格管理)');
+            }
+        }
+        
+        // 使用全局的MeshManager文件夹
+        this.debugFolder = ModelLoader.globalMeshManagerFolder;
         this.setupMeshDebugUI(this.debugFolder);
         this.debugFolder.close();
     }
@@ -717,10 +762,45 @@ export default class MeshManager {
      * 更新方法，遍历所有 Horse 和 Stork 实例并调用其 update 方法。
      */
     update() {
-        // 遍历所有 Horse 实例并调用其 update 方法
-        this.horses.forEach(horse => horse.update());
-        // 遍历所有 Stork 实例并调用其 update 方法
-        this.storks.forEach(stork => stork.update());
+        // 更新所有模型实例
+        this.models.forEach(model => model.update());
+    }
+    
+    // 获取指定名称的模型实例
+    getModel(name) {
+        return this.modelInstances[name];
+    }
+    
+    // 获取所有模型名称
+    getModelNames() {
+        return Object.keys(this.modelInstances);
+    }
+    
+    // 为指定模型播放动画
+    playModelAnimation(modelName, animationName) {
+        const model = this.modelInstances[modelName];
+        if (model && typeof model.playAnimation === 'function') {
+            return model.playAnimation(animationName);
+        }
+        return false;
+    }
+    
+    // 停止指定模型的动画
+    stopModelAnimation(modelName) {
+        const model = this.modelInstances[modelName];
+        if (model && typeof model.stopAnimation === 'function') {
+            return model.stopAnimation();
+        }
+        return false;
+    }
+    
+    // 设置指定模型的动画速度
+    setModelAnimationSpeed(modelName, speed) {
+        const model = this.modelInstances[modelName];
+        if (model && typeof model.setAnimationSpeed === 'function') {
+            return model.setAnimationSpeed(speed);
+        }
+        return false;
     }
 
     /**
