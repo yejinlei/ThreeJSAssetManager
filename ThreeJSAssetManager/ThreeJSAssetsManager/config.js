@@ -136,24 +136,6 @@ export default {
         highlightOnHover: true
     },
 
-    Particles: {
-        systems: [
-            {
-                enabled: true,
-                name: 'Snow',
-                count: 1000,
-                size: 0.1,
-                spread: 20,
-                color: 0xffffff,
-                opacity: 0.8,
-                animate: true,
-                speed: 0.01,
-                rotate: false,
-                position: { x: 0, y: 0, z: 0 }
-            }
-        ]
-    },
-
     Performance: {
         enabled: true
     },

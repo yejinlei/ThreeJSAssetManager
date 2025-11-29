@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { WebGLRenderer, Color, SRGBColorSpace, PCFSoftShadowMap } from 'three';
-import ThreeJSAssetsManager from './ThreeJSAssetsManager.js';
 import Sizes from "./Utils/Sizes.js";
 import config from './config.js';
 
@@ -15,16 +14,72 @@ export default class RenderManager {
     this.debug = this.threejsassetsmanagerInstance?.debug;
     this.gui = this.threejsassetsmanagerInstance?.gui;
 
+    // 任务要求1：所有参数来源于config.js
+    // 任务要求2：根据enabled的值决定是否初始化
+    this.config = config.RenderManager || {
+      enabled: true,
+      antialias: true,
+      physicallyCorrectLights: true,
+      outputColorSpace: 'SRGBColorSpace',
+      toneMapping: 'CineonToneMapping',
+      toneMappingExposure: 1.0,
+      clearColor: 0x212831,
+      shadow: {
+        enabled: true,
+        type: 'PCFSoftShadowMap'
+      }
+    };
+    
+    // 设置启用状态
+    this.enabled = this.config.enabled !== false;
+
+    // 无论enabled状态如何，都初始化渲染器以支持调试功能
+    this.webGLRenderer = null;
+    this.initializeRenderer();
+
+    // 任务要求3：无论enabled状态如何，都设置调试UI
+    if (this.debug) {
+      this.setupDebugGUI();
+    }
+
+    // 设置渲染器尺寸
+    if (this.webGLRenderer && this.sizes) {
+      this.webGLRenderer.setSize(this.sizes.width, this.sizes.height);
+      this.webGLRenderer.setPixelRatio(this.sizes.pixelRatio);
+    }
+  }
+
+  resize() {
+    this.webGLRenderer.setSize(this.sizes.width, this.sizes.height);
+    this.webGLRenderer.setPixelRatio(this.sizes.pixelRatio);
+  }
+
+  update() {
+    // 任务要求2：根据enabled的值决定是否调用threejs的api
+    if (this.enabled && this.webGLRenderer && this.scene && this.camera) {
+      this.webGLRenderer.render(this.scene, this.camera);
+    }
+  }
+
+  initializeRenderer() {
+    // 无论enabled状态如何，都初始化渲染器以支持调试功能
+    if (!this.canvas) return;
+    
     this.webGLRenderer = new WebGLRenderer({
       canvas: this.canvas,
-      antialias: true,
+      antialias: this.config.antialias
     });
 
     // 基础渲染器配置
-    this.webGLRenderer.physicallyCorrectLights = true;
-    this.webGLRenderer.outputColorSpace = SRGBColorSpace;
+    this.webGLRenderer.physicallyCorrectLights = this.config.physicallyCorrectLights;
+    
+    // 颜色空间设置
+    const colorSpaceMap = {
+      'SRGBColorSpace': SRGBColorSpace,
+      'LinearSRGBColorSpace': THREE.LinearSRGBColorSpace
+    };
+    this.webGLRenderer.outputColorSpace = colorSpaceMap[this.config.outputColorSpace] || SRGBColorSpace;
 
-    // 应用config配置 - 从config.js读取所有值，不使用硬编码默认值
     // ToneMapping 映射
     const toneMappingMap = {
       'NoToneMapping': THREE.NoToneMapping,
@@ -42,35 +97,28 @@ export default class RenderManager {
       'VSMShadowMap': THREE.VSMShadowMap
     };
 
-    this.webGLRenderer.toneMapping = toneMappingMap[config.RenderManager.toneMapping] || THREE.CineonToneMapping;
-    this.webGLRenderer.toneMappingExposure = config.RenderManager.toneMappingExposure;
-    this.webGLRenderer.shadowMap.enabled = config.RenderManager.shadow.enabled;
-    this.webGLRenderer.shadowMap.type = shadowMapTypeMap[config.RenderManager.shadow.type] || THREE.PCFSoftShadowMap;
-    this.webGLRenderer.setClearColor(new Color(config.RenderManager.clearColor));
-
-    // 设置渲染器尺寸
-    this.webGLRenderer.setSize(this.sizes.width, this.sizes.height);
-    this.webGLRenderer.setPixelRatio(this.sizes.pixelRatio);
-
-    // 调试模式下添加GUI控制
-    if (this.debug) {
-      this.setupDebugGUI();
-    }
-  }
-
-  resize() {
-    this.webGLRenderer.setSize(this.sizes.width, this.sizes.height);
-    this.webGLRenderer.setPixelRatio(this.sizes.pixelRatio);
-  }
-
-  update() {
-    this.webGLRenderer.render(this.scene, this.camera);
+    // 应用配置 - 任务要求1：所有参数来源于config.js
+    this.webGLRenderer.toneMapping = toneMappingMap[this.config.toneMapping] || THREE.CineonToneMapping;
+    this.webGLRenderer.toneMappingExposure = this.config.toneMappingExposure;
+    this.webGLRenderer.shadowMap.enabled = this.config.shadow?.enabled;
+    this.webGLRenderer.shadowMap.type = shadowMapTypeMap[this.config.shadow?.type] || THREE.PCFSoftShadowMap;
+    this.webGLRenderer.setClearColor(new Color(this.config.clearColor));
   }
 
   setupDebugGUI() {
+    if (!this.gui) return;
+    
+    // 任务要求3：无论enabled状态如何，都显示DebugUI
     // 添加到相机与渲染分类下
     const cameraRenderFolder = this.gui.cameraFolder || this.gui.addFolder('📷 Camera & Rendering (相机与渲染)');
     const rendererFolder = cameraRenderFolder.addFolder('Renderer(渲染管理)');
+
+    // 启用/禁用控制 - 任务要求4：值变更时实时生效
+    rendererFolder.add(this, 'enabled').name('启用渲染器(Enabled)').onChange((value) => {
+      this.config.enabled = value;
+      // 实时生效：重新初始化渲染器
+      this.initializeRenderer();
+    });
 
     // ToneMapping 下拉选择
     const toneMappingOptions = {
@@ -82,29 +130,48 @@ export default class RenderManager {
     };
 
     const toneMappingControl = {
-      toneMapping: config.RenderManager.toneMapping
+      toneMapping: this.config.toneMapping
     };
 
     rendererFolder.add(toneMappingControl, 'toneMapping', Object.keys(toneMappingOptions))
       .name('色调映射(Tone Mapping)')
       .onChange((value) => {
-        this.webGLRenderer.toneMapping = toneMappingOptions[value];
-        config.RenderManager.toneMapping = value;
+        this.config.toneMapping = value;
+        if (this.webGLRenderer) {
+          this.webGLRenderer.toneMapping = toneMappingOptions[value];
+        }
       });
 
-    rendererFolder.add(this.webGLRenderer, 'toneMappingExposure').min(0).max(5).step(0.01).name('曝光度(Exposure)');
+    rendererFolder.add(this.config, 'toneMappingExposure').min(0).max(5).step(0.01).name('曝光度(Exposure)')
+      .onChange((value) => {
+        if (this.webGLRenderer) {
+          this.webGLRenderer.toneMappingExposure = value;
+        }
+      });
 
     // 创建一个颜色对象用于调试
-    const bgColor = { value: config.RenderManager.clearColor };
+    const bgColor = { value: this.config.clearColor };
     rendererFolder.addColor(bgColor, 'value').name('背景色(Clear Color)').onChange((color) => {
-      this.webGLRenderer.setClearColor(new Color(color));
-      config.RenderManager.clearColor = color;
+      this.config.clearColor = color;
+      if (this.webGLRenderer) {
+        this.webGLRenderer.setClearColor(new Color(color));
+      }
     });
 
-    // Shadow 控制
+    // Shadow 控制 - 任务要求3和4
     const shadowFolder = rendererFolder.addFolder('Shadow(阴影)');
-    shadowFolder.add(this.webGLRenderer.shadowMap, 'enabled').name('启用(Enabled)').onChange((value) => {
-      config.RenderManager.shadow.enabled = value;
+    
+    // 确保shadow配置对象存在
+    if (!this.config.shadow) {
+      this.config.shadow = { enabled: false, type: 'PCFSoftShadowMap' };
+    }
+    
+    // 启用/禁用阴影 - 从this.config读取并实时同步
+    shadowFolder.add(this.config.shadow, 'enabled').name('启用(Enabled)').onChange((value) => {
+      this.config.shadow.enabled = value;
+      if (this.webGLRenderer) {
+        this.webGLRenderer.shadowMap.enabled = value;
+      }
     });
 
     // ShadowMap 类型下拉选择
@@ -116,15 +183,17 @@ export default class RenderManager {
     };
 
     const shadowTypeControl = {
-      type: config.RenderManager.shadow.type
+      type: this.config.shadow.type
     };
 
     shadowFolder.add(shadowTypeControl, 'type', Object.keys(shadowMapTypeOptions))
       .name('类型(Type)')
       .onChange((value) => {
-        this.webGLRenderer.shadowMap.type = shadowMapTypeOptions[value];
-        this.webGLRenderer.shadowMap.needsUpdate = true;
-        config.RenderManager.shadow.type = value;
+        this.config.shadow.type = value;
+        if (this.webGLRenderer) {
+          this.webGLRenderer.shadowMap.type = shadowMapTypeOptions[value];
+          this.webGLRenderer.shadowMap.needsUpdate = true;
+        }
       });
 
     rendererFolder.close();

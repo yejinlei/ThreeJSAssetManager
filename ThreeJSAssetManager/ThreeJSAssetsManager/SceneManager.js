@@ -1,6 +1,5 @@
 // import * as THREE from 'https://gcore.jsdelivr.net/npm/three@0.132.2/build/three.min.js'
 import { Scene, Fog, Color, Group, SRGBColorSpace } from 'three';
-import threeJSAssetsManager from './ThreeJSAssetsManager.js';
 import config from './config.js';
 /**
  * 场景管理器类
@@ -18,10 +17,27 @@ export default class SceneManager {
     this.debug = this.threejsassetsmanagerInstance?.debug;
     this.gui = this.threejsassetsmanagerInstance?.gui;
 
-    console.log(this.threejsassetsmanagerInstance);
+    // 任务要求1：所有参数来源于config.js
+    this.config = config['SceneManager'] || {
+      enabled: true,
+      Color: {
+        enabled: true,
+        value: 0xffffff
+      },
+      fog: {
+        enabled: false,
+        color: 0xffffff,
+        near: 1,
+        far: 1000
+      }
+    };
+
+    // 任务要求2：根据enabled的值决定是否初始化
+    this.enabled = this.config.enabled !== false;
 
     this.cavas = cavas;
 
+    // 无论enabled状态如何，都创建基本的场景对象以支持调试
     this.scene = new Scene();
     this.mainGroup = new Group();
     // GLB根部节点，便于添加glb模型场景到主场景组
@@ -39,7 +55,12 @@ export default class SceneManager {
     });
 
 
-    this.confScene();
+    // 根据enabled状态配置场景
+    if (this.enabled) {
+      this.confScene();
+    }
+
+    // 任务要求3：无论enabled状态如何，都设置调试UI
     this.confGUI();
     this.modelVisibility = {}; // 模型可见性状态
 
@@ -69,23 +90,27 @@ export default class SceneManager {
   }
 
   confScene() {
+    if (!this.enabled || !this.scene) return;
 
-    if (!(config['SceneManager'] || {}).enabled)
-      return;
+    console.log('SceneManager:confScene函数，配置：', this.config);
 
-
-    console.log('SceneManager:confScene函数，配置：', (config['SceneManager'] || {}));
+    // 任务要求1：所有参数来源于this.config
     // 背景颜色
-    if ((config['SceneManager'] || {}).Color.enabled) {
-      console.log((config['SceneManager'] || {}).Color.value);
-      this.scene.background = new Color((config['SceneManager'] || {}).Color.value);
+    if (this.config.Color?.enabled) {
+      this.scene.background = new Color(this.config.Color.value);
     } else {
       this.scene.background = new Color(0xffffff);
     }
 
     // 雾效果
-    if ((config['SceneManager'] || {}).fog.enabled) {
-      this.scene.fog = new Fog((config['SceneManager'] || {}).fog.color, (config['SceneManager'] || {}).fog.near, (config['SceneManager'] || {}).fog.far);
+    if (this.config.fog?.enabled) {
+      this.scene.fog = new Fog(
+        this.config.fog.color,
+        this.config.fog.near,
+        this.config.fog.far
+      );
+    } else {
+      this.scene.fog = null;
     }
 
     // // 环境光
@@ -103,85 +128,140 @@ export default class SceneManager {
   confGUI() {
     if (!this.debug || !this.gui) return;
 
+    // 任务要求3：无论enabled状态如何，都显示DebugUI
     if (!this.scene) this.scene = new Scene();
+
+    // 任务要求1：确保this.config存在
+    if (!this.config) {
+      this.config = config['SceneManager'] || {
+        enabled: true,
+        Color: {
+          enabled: true,
+          value: 0xffffff
+        },
+        fog: {
+          enabled: false,
+          color: 0xffffff,
+          near: 1,
+          far: 1000
+        }
+      };
+    }
+
     // 添加到场景与对象分类下
     const parentFolder = this.gui.sceneFolder || this.gui.addFolder('🏞️ Scene & Objects (场景与对象)');
     this.debugFolder = parentFolder.addFolder('SceneManager(场景管理)');
 
-    // 确保场景属性存在 - 但不强制创建雾效
-    if (!this.scene.background) this.scene.background = new Color(0xffffff);
-    // 移除强制雾效初始化 - 雾效应该由 confScene() 根据配置创建
-    // if (!this.scene.fog) this.scene.fog = new Fog(0xcccccc, 10, 50);
-    // if (this.scene.fog && !this.scene.fog.color) this.scene.fog.color = new Color(0xcccccc);
+    // 任务要求4：添加enabled控制，确保值变更时实时生效
+    this.debugFolder.add(this.config, 'enabled').name('启用SceneManager').onChange((value) => {
+      // 任务要求2和4：实时更新enabled状态并应用
+      this.enabled = value;
+      config['SceneManager'].enabled = value;
+
+      // 根据新的enabled状态重新配置场景
+      if (value) {
+        this.confScene();
+      } else {
+        // 禁用时清除效果但保留场景对象
+        if (this.scene) {
+          this.scene.fog = null;
+          // 保持背景色不变，仅清除雾效
+        }
+      }
+    });
+
+    // 确保场景属性存在
+    if (!this.scene.background) this.scene.background = new Color(this.config.Color?.value || 0xffffff);
     if (!this.scene.environment) this.scene.environment = new Color(0xffffff);
 
     // 背景颜色控制
     const bgFolder = this.debugFolder.addFolder('Background');
-    const bgColor = {
-      value: this.scene.background ? this.scene.background.getHex() : 0xffffff
-    };
-    bgFolder.addColor(bgColor, 'value').name('背景色').onChange((val) => {
-      this.scene.background = new Color(val);
-      console.log('config:this.scene.background', val.toString(16));
-    });
 
-    // 雾效控制 - 极简版
-    const fogFolder = this.debugFolder.addFolder('Fog(雾效)');
-    const fog = {
-      enabled: config['SceneManager'].fog.enabled,
-      color: config['SceneManager'].fog.color,
-      near: config['SceneManager'].fog.near,
-      far: config['SceneManager'].fog.far,
+    // 确保Color配置存在
+    if (!this.config.Color) {
+      this.config.Color = { enabled: true, value: 0xffffff };
+    }
 
-      // 更新场景雾效
-      update: () => {
-        if (fog.enabled) {
-          // 创建新的雾效
-          this.scene.fog = new Fog(fog.color, fog.near, fog.far);
-
-          // 如果参数控制文件夹不存在，则创建
-          if (!this._fogControls) {
-            this._createFogControls();
-          } else {
-            // 显示已有的参数控制文件夹
-            this._fogControls.show();
-          }
+    bgFolder.add(this.config.Color, 'enabled').name('启用背景色').onChange((value) => {
+      // 任务要求4：实时同步到配置并生效
+      config['SceneManager'].Color.enabled = value;
+      if (this.enabled && this.scene) {
+        if (value) {
+          this.scene.background = new Color(this.config.Color.value);
         } else {
-          // 销毁雾效对象
-          this.scene.fog = null;
-
-          // 销毁参数控制文件夹
-          if (this._fogControls) {
-            this._fogControls.hide();
-          }
+          this.scene.background = null;
         }
       }
+    });
+
+    const bgColor = {
+      value: this.config.Color.value
     };
+    bgFolder.addColor(bgColor, 'value').name('背景色').onChange((val) => {
+      // 任务要求4：实时同步到配置并生效
+      this.scene.background = new Color(val);
+      this.config.Color.value = val;
+      config['SceneManager'].Color.value = val;
+    });
 
-    // 保存雾效实例引用
-    this._fog = fog;
+    // 雾效控制
+    const fogFolder = this.debugFolder.addFolder('Fog(雾效)');
 
-    // 创建控制器 - 只保留启用选项
-    fogFolder.add(fog, 'enabled').name('启用').onChange(fog.update);
-
-    // 创建雾效参数控制文件夹的方法
-    this._createFogControls = () => {
-      // 创建参数控制文件夹
-      this._fogControls = fogFolder.addFolder('参数');
-
-      // 添加参数控制器
-      this._fogControls.addColor(this._fog, 'color').name('颜色').onChange(this._fog.update);
-      this._fogControls.add(this._fog, 'near', 0, 100).name('近距离').onChange(this._fog.update);
-      this._fogControls.add(this._fog, 'far', 0, 1000).name('远距离').onChange(this._fog.update);
-
-      // 根据启用状态设置参数文件夹可见性
-      this._fog.enabled ? this._fogControls.show() : this._fogControls.hide();
-    };
-
-    // 初始化时，如果雾效已启用，则创建参数控制文件夹
-    if (fog.enabled) {
-      this._createFogControls();
+    // 确保fog配置存在
+    if (!this.config.fog) {
+      this.config.fog = { enabled: false, color: 0xffffff, near: 1, far: 1000 };
     }
+
+    fogFolder.add(this.config.fog, 'enabled').name('启用雾效').onChange((value) => {
+      // 任务要求4：实时同步到配置并生效
+      config['SceneManager'].fog.enabled = value;
+      if (this.enabled && this.scene) {
+        if (value) {
+          this.scene.fog = new Fog(
+            this.config.fog.color,
+            this.config.fog.near,
+            this.config.fog.far
+          );
+        } else {
+          this.scene.fog = null;
+        }
+      }
+    });
+
+    // 雾效参数控制
+    const fogParamsFolder = fogFolder.addFolder('参数');
+
+    // 颜色控制
+    fogParamsFolder.addColor(this.config.fog, 'color').name('颜色').onChange((value) => {
+      // 任务要求4：实时同步到配置并生效
+      config['SceneManager'].fog.color = value;
+      if (this.enabled && this.scene && this.scene.fog) {
+        this.scene.fog.color = new Color(value);
+      }
+    });
+
+    // 近距离控制
+    fogParamsFolder.add(this.config.fog, 'near', 0, 100).name('近距离').onChange((value) => {
+      // 任务要求4：实时同步到配置并生效
+      config['SceneManager'].fog.near = value;
+      if (this.enabled && this.scene && this.scene.fog) {
+        this.scene.fog.near = value;
+      }
+    });
+
+    // 远距离控制
+    fogParamsFolder.add(this.config.fog, 'far', 0, 1000).name('远距离').onChange((value) => {
+      // 任务要求4：实时同步到配置并生效
+      config['SceneManager'].fog.far = value;
+      if (this.enabled && this.scene && this.scene.fog) {
+        this.scene.fog.far = value;
+      }
+    });
+
+    // 根据启用状态设置参数文件夹可见性
+    this.config.fog.enabled ? fogParamsFolder.show() : fogParamsFolder.hide();
+
+
 
     // 环境光控制
     const envFolder = this.debugFolder.addFolder('Environment(环境光)');
