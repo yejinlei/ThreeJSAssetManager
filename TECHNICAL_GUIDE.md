@@ -276,34 +276,52 @@ folder.add(loaderControls, 'loadAllModels').name('加载所有模型');
   - **平滑控制**: 通过控制器阻尼效果实现平滑的相机移动
   - **全局引用**: 从 ThreeJSAssetsManager 获取必要的引用（如 scene、canvas）
 
-### 2.5 RenderManager (渲染管理)
+### 3.5 RenderManager (渲染管理)
 - **路径**: `ThreeJSAssetsManager/RenderManager.js`
-- **职责**:
-    - 创建和配置 `THREE.WebGLRenderer`。
-    - 设置渲染参数：
-        - 抗锯齿 (`antialias`)
-        - 物理正确光照 (`physicallyCorrectLights`)
-        - 色彩空间 (`outputColorSpace`)
-        - 色调映射 (`toneMapping`, `toneMappingExposure`)
-        - 阴影贴图 (`shadowMap`)
-    - 执行最终的渲染调用 (`renderer.render(scene, camera)`)。
+- **技术原理**：负责创建和配置 WebGLRenderer，管理渲染参数和执行实际渲染操作
+- **核心功能**:
+    - 创建和配置 `THREE.WebGLRenderer` 实例
+    - 设置高级渲染参数（抗锯齿、物理正确光照、色彩空间等）
+    - 管理渲染器大小和像素比例
+    - 执行场景渲染操作
+    - 处理渲染性能相关设置
+- **技术特点**:
+  - 渲染优化：配置最佳渲染参数以平衡质量和性能
+  - 设备适配：根据设备能力自动调整渲染设置
+  - 与后期处理系统集成：支持与 PostProcessor 协同工作
 
-### 2.6 MeshManager (网格/模型管理)
+
+### 3.6 MeshManager (网格/模型管理)
 - **路径**: `ThreeJSAssetsManager/MeshManager.js`
-- **职责**:
-    - 监听资源加载完成事件 (`ready`)。
-    - 实例化和管理场景中的物体（如 GLB 模型、自定义几何体）。
-    - 提供方法查找和控制场景中的 Mesh 可见性 (`getMeshesInScene`, `setAllGlbVisibility`)。
-    - 包含用于测试的几何体创建逻辑。
+- **技术原理**：负责管理场景中的网格和模型，提供模型可见性控制和层级管理功能
+- **核心功能**:
+    - 监听资源加载完成事件 (`ready`)
+    - 实例化和管理场景中的物体（如 GLB 模型、自定义几何体）
+    - 提供方法查找和控制场景中的 Mesh 可见性
+    - 管理 GLB 模型树结构和层级关系
+    - 维护场景 Mesh 集合，支持批量操作
+- **技术特点**:
+  - 层级管理：通过树结构组织和访问模型
+  - 可见性控制：提供细粒度的模型显示/隐藏控制
+  - 事件驱动：基于资源加载事件进行模型初始化
+  - 调试支持：集成调试 UI 进行交互式模型管理
 
-### 2.7 DebugUI (调试界面)
+### 3.7 DebugUI (调试界面)
 - **路径**: `ThreeJSAssetsManager/DebugUI.js`
-- **职责**:
-    - 封装 `lil-gui` 库。
-    - 根据 `config.js` 或 URL hash (`#debug`) 决定是否实例化 GUI。
-    - 为其他管理器提供统一的 GUI 挂载点。
+- **技术原理**：基于 lil-gui 库构建统一的调试界面系统，提供可视化参数调整和功能控制
+- **核心功能**:
+    - 封装 `lil-gui` 库
+    - 根据 `config.js` 或 URL hash (`#debug`) 决定是否实例化 GUI
+    - 为其他管理器提供统一的 GUI 挂载点
+    - 支持多种类型的控件（滑块、颜色选择器、复选框、下拉菜单等）
+    - 实现配置的实时更新和持久化
+- **技术特点**:
+  - 模块化设计：各管理器可独立扩展调试功能
+  - 统一入口：集中管理所有调试控件
+  - 可视化控制：直观调整场景参数
+  - 条件渲染：根据调试模式动态显示/隐藏调试界面
 
-## 3. 配置系统 (config.js)
+## 4. 配置系统 (config.js)
 
 项目使用 `config.js` 进行集中式配置管理。各管理器在初始化时会读取相应的配置项。
 
@@ -345,7 +363,7 @@ export default {
 }
 ```
 
-## 4. 扩展指南
+## 5. 扩展指南
 
 ### 添加新的管理器
 1. 在 `ThreeJSAssetsManager` 目录下创建新的管理器类文件（例如 `PhysicsManager.js`）。
@@ -357,7 +375,7 @@ export default {
 1. 修改 `World/sources.js`（假设存在），添加新的资源描述对象。
 2. 在 `MeshManager.js` 或其他逻辑类中监听 `resources.on('ready')` 事件，并处理新加载的资源。
 
-## 5. 常见问题
+## 6. 常见问题解答 (FAQ)
 
 - **如何开启调试模式？**
   在 URL 后加上 `#debug`，或者在 `config.js` 中将 `DebugUI.enabled` 设置为 `true`。
