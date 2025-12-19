@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Three.js Editor - ThreeJSAssetsManager</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #000;
+            overflow: hidden;
+        }
+
+        #canvas01 {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            outline: none;
+        }
+    </style>
+
+    <!-- Import Maps 配置 -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://gcore.jsdelivr.net/npm/three@0.179.1/build/three.module.js",
+            "three/addons/": "https://gcore.jsdelivr.net/npm/three@0.179.1/examples/jsm/",
+            "lil-gui": "https://gcore.jsdelivr.net/npm/lil-gui@0.18.1/dist/lil-gui.esm.min.js",
+            "cannon-es": "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"
+        }
+    }
+    </script>
+
+    <!-- 预加载并覆盖配置 -->
+    <script type="module">
+        // 先导入默认配置和自定义配置
+        import defaultConfig from '../ThreeJSAssetManager/ThreeJSAssetsManager/config.js';
+        import editConfig from './config.js';
+
+        // 深度合并配置
+        function deepMerge(target, source) {
+            for (const key in source) {
+                if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+                    target[key] = target[key] || {};
+                    deepMerge(target[key], source[key]);
+                } else {
+                    target[key] = source[key];
+                }
+            }
+            return target;
+        }
+
+        // 用 Edit 配置覆盖默认配置
+        deepMerge(defaultConfig, editConfig);
+
+        console.log('✅ Edit config merged into default config');
+
+        // 将合并后的配置存储到全局，供后续使用
+        window.__CUSTOM_CONFIG_LOADED__ = true;
+    </script>
+</head>
+
+<body>
+    <canvas id="canvas01"></canvas>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+        import ThreeJSAssetsManager from '../ThreeJSAssetManager/ThreeJSAssetsManager/ThreeJSAssetsManager.js';
+        import sources from '../ThreeJSAssetManager/ThreeJSAssetsManager/World/sources.js';
+        import Pic2GLBManager from './AI/Pic2GLBManager.js';
+        import config from './config.js';
+
+        // 清空 sources 数组，不加载任何默认模型
+        sources.length = 0;
+
+        // 初始化
+        const canvas = document.getElementById('canvas01');
+        const manager = new ThreeJSAssetsManager(canvas);
+
+        // 全局访问
+        window.manager = manager;
+        window.THREE = THREE;
+
+        console.log('🎨 Three.js Editor initialized');
+        console.log('📦 Available managers:', {
+            postProcessor: !!manager.postProcessor,
+            helperManager: !!manager.helperManager,
+            interactionManager: !!manager.interactionManager,
+            particleManager: !!manager.particleManager,
+            performanceManager: !!manager.performanceManager,
+            shaderManager: !!manager.shaderManager,
+            physicsManager: !!manager.physicsManager,
+            audioManager: !!manager.audioManager,
+            webXRManager: !!manager.webXRManager
+        });
+
+        // 初始化AI功能
+        console.log('🔍 manager.gui:', manager.gui);
+        
+        if (manager.gui) {
+            const aiFolder = manager.gui.addFolder('🤖 AI');
+            
+            // Pic2GLB功能
+            const pic2glbConfig = config.DebugUI?.AI?.Pic2GLB;
+            const pic2glb = new Pic2GLBManager(manager, pic2glbConfig);
+            window.pic2glb = pic2glb;
+            
+            const pic2glbFolder = aiFolder.addFolder('📷 图片转GLB');
+            
+            // 状态显示
+            const statusObj = { status: pic2glb.apiToken ? '等待操作...' : '❌ Token未配置' };
+            pic2glbFolder.add(statusObj, 'status').name('状态').listen();
+            pic2glb.statusCallback = (msg) => { statusObj.status = msg; };
+            
+            // 上传按钮
+            const uploadObj = {
+                upload: () => {
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.accept = 'image/*';
+                    input.onchange = (e) => {
+                        const file = e.target.files[0];
+                        if (file) pic2glb.uploadAndGenerate(file);
+                    };
+                    input.click();
+                }
+            };
+            pic2glbFolder.add(uploadObj, 'upload').name('📤 上传图片生成GLB');
+            
+            // 下载按钮
+            const downloadObj = { download: () => pic2glb.downloadGLB() };
+            pic2glbFolder.add(downloadObj, 'download').name('📥 下载GLB');
+            
+            // 参数设置
+            const paramsFolder = pic2glbFolder.addFolder('⚙️ 生成参数');
+            paramsFolder.add(pic2glb.params, 'seed', 0, 9999, 1).name('随机种子');
+            paramsFolder.add(pic2glb.params, 'num_inference_steps', 1, 20, 1).name('推理步数');
+            paramsFolder.add(pic2glb.params, 'octree_resolution', 64, 256, 32).name('八叉树分辨率');
+            paramsFolder.add(pic2glb.params, 'guidance_scale', 1, 10, 0.5).name('引导强度');
+            paramsFolder.add(pic2glb.params, 'texture').name('生成纹理');
+            
+            pic2glbFolder.open();
+            aiFolder.open();
+            console.log('✅ AI Pic2GLB 功能已加载');
+        } else {
+            console.warn('⚠️ DebugUI.gui 不存在，无法添加AI功能');
+        }
+
+        // 自定义拖拽加载 GLB/GLTF 功能
+        const dracoLoader = new DRACOLoader();
+        dracoLoader.setDecoderPath('https://gcore.jsdelivr.net/npm/three@0.179.1/examples/jsm/libs/draco/');
+        const gltfLoader = new GLTFLoader();
+        gltfLoader.setDRACOLoader(dracoLoader);
+
+        window.addEventListener('dragover', (e) => {
+            e.preventDefault();
+        }, false);
+
+        window.addEventListener('drop', (e) => {
+            e.preventDefault();
+
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                const file = files[0];
+                const filename = file.name.toLowerCase();
+
+                if (filename.endsWith('.glb') || filename.endsWith('.gltf')) {
+                    const url = URL.createObjectURL(file);
+                    console.log(`📂 Loading dropped file: ${file.name}`);
+
+                    gltfLoader.load(url, (gltf) => {
+                        const model = gltf.scene;
+                        model.name = file.name;
+                        manager.scene.add(model);
+
+                        // 自动调整相机以查看模型
+                        const box = new THREE.Box3().setFromObject(model);
+                        const size = box.getSize(new THREE.Vector3());
+                        const center = box.getCenter(new THREE.Vector3());
+
+                        // 将模型居中
+                        model.position.x -= center.x;
+                        model.position.y -= center.y;
+                        model.position.z -= center.z;
+
+                        console.log('✅ Model loaded:', file.name);
+                        console.log('📊 Model info:', {
+                            name: model.name,
+                            children: model.children.length,
+                            size: size
+                        });
+
+                        URL.revokeObjectURL(url);
+                    }, (xhr) => {
+                        console.log(`⏳ Loading: ${(xhr.loaded / xhr.total * 100).toFixed(2)}%`);
+                    }, (error) => {
+                        console.error('❌ Error loading model:', error);
+                    });
+                } else {
+                    console.warn('⚠️ Only .glb or .gltf files are supported.');
+                }
+            }
+        }, false);
+
+        console.log('💡 Tip: Drag and drop GLB/GLTF files to load models');
+    </script>
+</body>
+
+</html>
