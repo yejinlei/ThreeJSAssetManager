@@ -10,8 +10,7 @@ export default class Pic2GLBManager {
     constructor(sceneManager, config = null) {
         this.sceneManager = sceneManager;
         // 优先从全局变量获取(GitHub Actions注入)，其次从config获取
-        //this.apiToken = window.GITEE_AI_TOKEN || config?.apiToken || '';
-        this.apiToken = process.env.GITEE_AI_TOKEN || config?.apiToken || '';
+        this.apiToken = window.GITEE_AI_TOKEN || config?.apiToken || '';
         this.apiUrl = 'https://ai.gitee.com/v1/async/image-to-3d';
         this.currentTaskId = null;
         this.currentGLBUrl = null;
