@@ -231,7 +231,11 @@ export default {
             enabled: true,
             Pic2GLB: {
                 enabled: true,
-                apiToken: ''
+                apiToken: '',
+                models: {
+                    'Hunyuan3D-2': 'Hunyuan3D-2',
+                    'Hi3DGen': 'Hi3DGen'
+                }
             }
         }
     }

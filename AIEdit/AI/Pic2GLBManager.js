@@ -16,14 +16,22 @@ export default class Pic2GLBManager {
         this.isProcessing = false;
         this.statusCallback = null;
         
-        // 动态获取token，支持运行时更新
-        this._apiToken = window.GITEE_AI_TOKEN || '';
+        // 保存配置引用
+        this.config = config || {};
+        
+        // 优先使用config中的token，然后是全局变量，最后是空字符串
+        const configToken = config?.apiToken || '';
+        this._apiToken = configToken || window.GITEE_AI_TOKEN || '';
+        this._tokenUpdateCallbacks = [];
+        
         Object.defineProperty(this, 'apiToken', {
             get: function() {
                 return this._apiToken;
             },
             set: function(value) {
                 this._apiToken = value;
+                // 通知所有回调token已更新
+                this._tokenUpdateCallbacks.forEach(callback => callback(value));
             }
         });
         
@@ -33,9 +41,14 @@ export default class Pic2GLBManager {
         dracoLoader.setDecoderPath('https://gcore.jsdelivr.net/npm/three@0.179.1/examples/jsm/libs/draco/');
         this.gltfLoader.setDRACOLoader(dracoLoader);
         
+        // 获取默认模型（配置中的第一个模型或默认值）
+        const availableModels = config?.models || {};
+        const defaultModel = Object.keys(availableModels).length > 0 ? 
+            Object.keys(availableModels)[0] : 'Hunyuan3D-2';
+        
         // 生成参数
         this.params = {
-            model: 'Hunyuan3D-2',
+            model: defaultModel,
             texture: true,
             seed: 1234,
             num_inference_steps: 5,
@@ -43,12 +56,212 @@ export default class Pic2GLBManager {
             guidance_scale: 5
         };
         
+        // 状态信息
+        this.status = '等待上传图片...';
+        this.fileInput = null;
+        this.selectedFile = null;
+        
+        // 初始化DebugUI
+        this.debug = window.ThreeJSAssetsManagerInstance?.debug || false;
+        this.gui = window.ThreeJSAssetsManagerInstance?.gui || null;
+        if (this.debug && this.gui) {
+            this.createDebugUI();
+        }
+        
         console.log('✅ Pic2GLBManager 已初始化', this.apiToken ? '(Token已配置)' : '(Token未配置)');
+    }
+
+    /**
+     * 创建DebugUI界面
+     */
+    createDebugUI() {
+        // 创建AI顶层文件夹
+        const aiFolder = this.gui.aiFolder || this.gui.addFolder('🤖 AI (人工智能)');
+        this.gui.aiFolder = aiFolder;
+        
+        // 创建Pic2GLB子文件夹
+        const folder = aiFolder.addFolder('🖼️ Pic2GLB (图片转GLB)');
+        
+        // API Token设置
+        const tokenObject = {
+            _displayToken: this.maskToken(this.apiToken),
+            setToken: () => {
+                const newToken = prompt('请输入Gitee AI API Token:', this.apiToken);
+                if (newToken !== null) {
+                    this.apiToken = newToken;
+                    window.GITEE_AI_TOKEN = newToken;
+                    this.updateStatus('✅ API Token已更新');
+                }
+            }
+        };
+        
+        // 添加token更新回调
+        this._tokenUpdateCallbacks.push((newToken) => {
+            tokenObject._displayToken = this.maskToken(newToken);
+        });
+        
+        folder.add(tokenObject, '_displayToken').name('API Token').listen();
+        folder.add(tokenObject, 'setToken').name('🔑 设置Token');
+        
+        // 文件上传区域
+        const fileObject = {
+            uploadImage: () => this.selectImageFile(),
+            selectedFileName: this.selectedFile ? this.selectedFile.name : '未选择文件'
+        };
+        
+        folder.add(fileObject, 'uploadImage').name('📤 选择图片文件');
+        folder.add(fileObject, 'selectedFileName').name('当前文件').listen();
+        
+        // 生成参数控制
+        const paramsFolder = folder.addFolder('⚙️ 生成参数');
+        
+        // 模型选择 - 使用配置中的模型选项
+        const modelOptions = this.config?.models || {
+            'Hunyuan3D-2': 'Hunyuan3D-2'
+        };
+        paramsFolder.add(this.params, 'model', modelOptions).name('模型类型');
+        
+        // 贴图开关
+        paramsFolder.add(this.params, 'texture').name('生成贴图');
+        
+        // 随机种子
+        const seedObject = {
+            seed: this.params.seed,
+            randomSeed: () => {
+                this.params.seed = Math.floor(Math.random() * 10000);
+                this.updateStatus(`🎲 随机种子: ${this.params.seed}`);
+            }
+        };
+        paramsFolder.add(seedObject, 'seed').min(0).max(9999).step(1).name('随机种子').onChange((value) => {
+            this.params.seed = value;
+        });
+        paramsFolder.add(seedObject, 'randomSeed').name('🎲 随机种子');
+        
+        // 推理步数
+        paramsFolder.add(this.params, 'num_inference_steps').min(1).max(20).step(1).name('推理步数');
+        
+        // 八叉树分辨率
+        paramsFolder.add(this.params, 'octree_resolution').min(64).max(256).step(32).name('八叉树分辨率');
+        
+        // 引导比例
+        paramsFolder.add(this.params, 'guidance_scale').min(1).max(10).step(0.5).name('引导比例');
+        
+        // 操作按钮
+        const actionsFolder = folder.addFolder('🎯 操作');
+        
+        const actionsObject = {
+            generateGLB: () => this.generateFromSelectedFile(),
+            downloadGLB: () => this.downloadGLB(),
+            clearModel: () => this.clearCurrentModel(),
+            isProcessing: this.isProcessing
+        };
+        
+        actionsFolder.add(actionsObject, 'generateGLB').name('🚀 生成GLB');
+        actionsFolder.add(actionsObject, 'downloadGLB').name('📥 下载GLB');
+        actionsFolder.add(actionsObject, 'clearModel').name('🗑️ 清除模型');
+        actionsFolder.add(actionsObject, 'isProcessing').name('处理中').listen();
+        
+        // 状态显示
+        const statusFolder = folder.addFolder('📊 状态');
+        const statusObject = {
+            status: this.status,
+            currentTaskId: this.currentTaskId || '无',
+            hasGLB: this.currentGLBUrl ? '是' : '否'
+        };
+        
+        statusFolder.add(statusObject, 'status').name('状态').listen();
+        statusFolder.add(statusObject, 'currentTaskId').name('任务ID').listen();
+        statusFolder.add(statusObject, 'hasGLB').name('已生成GLB').listen();
+        
+        // 打开文件夹
+        folder.open();
+        paramsFolder.open();
+        
+        // 创建隐藏的文件输入元素
+        this.createFileInput();
+        
+        // 保存状态对象引用
+        this.debugStatus = statusObject;
+        this.debugFile = fileObject;
+        this.debugActions = actionsObject;
+    }
+    
+    /**
+     * 创建隐藏的文件输入元素
+     */
+    createFileInput() {
+        this.fileInput = document.createElement('input');
+        this.fileInput.type = 'file';
+        this.fileInput.accept = 'image/*';
+        this.fileInput.style.display = 'none';
+        
+        this.fileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                this.selectedFile = file;
+                this.debugFile.selectedFileName = file.name;
+                this.updateStatus(`✅ 已选择文件: ${file.name}`);
+            }
+        });
+        
+        document.body.appendChild(this.fileInput);
+    }
+    
+    /**
+     * 选择图片文件
+     */
+    selectImageFile() {
+        if (this.isProcessing) {
+            this.updateStatus('⚠️ 正在处理中，请等待...');
+            return;
+        }
+        this.fileInput.click();
+    }
+    
+    /**
+     * 从选择的文件生成GLB
+     */
+    async generateFromSelectedFile() {
+        if (!this.selectedFile) {
+            this.updateStatus('❌ 请先选择图片文件');
+            return;
+        }
+        return await this.uploadAndGenerate(this.selectedFile);
+    }
+    
+    /**
+     * 清除当前模型
+     */
+    clearCurrentModel() {
+        if (this.currentModel && this.sceneManager.scene) {
+            this.sceneManager.scene.remove(this.currentModel);
+            this.currentModel = null;
+            this.currentGLBUrl = null;
+            this.currentTaskId = null;
+            this.updateStatus('🗑️ 模型已清除');
+            
+            // 更新DebugUI状态
+            if (this.debugStatus) {
+                this.debugStatus.hasGLB = '否';
+                this.debugStatus.currentTaskId = '无';
+            }
+        }
     }
 
     updateStatus(msg) {
         console.log(msg);
+        this.status = msg;
         if (this.statusCallback) this.statusCallback(msg);
+        
+        // 更新DebugUI状态显示
+        if (this.debugStatus) {
+            this.debugStatus.status = msg;
+        }
+        
+        // 更新处理状态
+        if (this.debugActions) {
+            this.debugActions.isProcessing = this.isProcessing;
+        }
     }
 
     async uploadAndGenerate(file) {
@@ -89,6 +302,11 @@ export default class Pic2GLBManager {
             this.currentTaskId = result.task_id;
             this.updateStatus(`🚀 任务已创建: ${this.currentTaskId}`);
             
+            // 更新DebugUI任务ID
+            if (this.debugStatus) {
+                this.debugStatus.currentTaskId = this.currentTaskId;
+            }
+            
             // 轮询任务状态
             const glbUrl = await this.pollTask(this.currentTaskId);
             if (glbUrl) {
@@ -126,10 +344,20 @@ export default class Pic2GLBManager {
             if (status === 'success') {
                 if (result.output?.file_url) {
                     this.updateStatus('✅ 生成完成!');
+                    
+                    // 更新DebugUI状态
+                    if (this.debugStatus) {
+                        this.debugStatus.hasGLB = '是';
+                    }
+                    
                     return result.output.file_url;
                 }
                 throw new Error('未找到输出文件');
             } else if (status === 'failed' || status === 'cancelled') {
+                // 更新DebugUI状态
+                if (this.debugStatus) {
+                    this.debugStatus.hasGLB = '否';
+                }
                 throw new Error(`任务${status}`);
             }
             
@@ -198,5 +426,37 @@ export default class Pic2GLBManager {
         a.click();
         document.body.removeChild(a);
         this.updateStatus('📥 开始下载GLB...');
+    }
+    
+    /**
+     * 遮蔽Token显示
+     */
+    maskToken(token) {
+        if (!token || token.length === 0) {
+            return '';
+        }
+        if (token.length <= 8) {
+            return '*'.repeat(token.length);
+        }
+        // 保留前4位和后4位，中间用*号代替
+        const start = token.substring(0, 4);
+        const end = token.substring(token.length - 4);
+        const middle = '*'.repeat(token.length - 8);
+        return start + middle + end;
+    }
+
+    /**
+     * 销毁管理器，清理资源
+     */
+    destroy() {
+        // 清除文件输入元素
+        if (this.fileInput && this.fileInput.parentNode) {
+            this.fileInput.parentNode.removeChild(this.fileInput);
+        }
+        
+        // 清除当前模型
+        this.clearCurrentModel();
+        
+        console.log('🗑️ Pic2GLBManager 已销毁');
     }
 }

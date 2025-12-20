@@ -74,6 +74,10 @@ export default class DebugUI
             utilitiesFolder.open();
         }
         
+        // 创建AI系统顶级目录，避免多个AI管理器重复创建
+        this.gui.aiFolder = this.gui.addFolder('🤖 AI (人工智能)');
+        this.gui.aiFolder.close();
+        
         // 预先创建特效系统顶级目录，避免多个管理器重复创建
         if (config['DebugUI'].Effects.enabled !== false) {
             this.effectsFolder = this.gui.addFolder('✨ Effects (特效系统)');
