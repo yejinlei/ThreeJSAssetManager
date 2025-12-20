@@ -42,4 +42,4 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
         env:
-          GITEE_AI_TOKEN: ${{ secrets.GITEE_AI_TOKEN }}
+          GITEE_AI_TOKEN: ${{ vars.GITEE_AI_TOKEN }}
