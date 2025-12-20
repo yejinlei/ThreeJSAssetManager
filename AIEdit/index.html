@@ -29,6 +29,9 @@
         }
     </style>
 
+    <!-- GitHub Actions注入的环境变量配置 ⚠️ 安全警告 -->
+    <script src="token-config.js"></script>
+    
     <!-- Import Maps 配置 -->
     <script type="importmap">
     {
@@ -41,11 +44,19 @@
     }
     </script>
 
-    <!-- 预加载并覆盖配置 -->
+
     <script type="module">
         // 先导入默认配置和自定义配置
         import defaultConfig from '../ThreeJSAssetManager/ThreeJSAssetsManager/config.js';
         import editConfig from './config.js';
+        
+        // 单独导入AI配置以确保能获取到token
+        let aiConfig = null;
+        try {
+            aiConfig = (await import('./config.js')).default;
+        } catch (e) {
+            console.warn('⚠️ 无法加载AI配置:', e);
+        }
 
         // 深度合并配置
         function deepMerge(target, source) {
@@ -119,10 +130,149 @@
             
             const pic2glbFolder = aiFolder.addFolder('📷 图片转GLB');
             
+            // Token设置（优先级：config.js > 注入环境 > 本地存储）
+            // 直接从AIEdit的config.js获取token，避免配置合并问题
+            const configToken = aiConfig?.DebugUI?.AI?.Pic2GLB?.apiToken || '';
+            const envToken = window.GITEE_AI_TOKEN || '';
+            const localToken = localStorage.getItem('GITEE_AI_TOKEN') || '';
+            
+            console.log('🔍 原始Token检查:', {
+                aiConfig,
+                configToken,
+                'aiConfig?': !!aiConfig,
+                'DebugUI?': !!aiConfig?.DebugUI,
+                'AI?': !!aiConfig?.DebugUI?.AI,
+                'Pic2GLB?': !!aiConfig?.DebugUI?.AI?.Pic2GLB,
+                'apiToken?': !!aiConfig?.DebugUI?.AI?.Pic2GLB?.apiToken,
+                mergedConfig: config
+            });
+            
+            // 确定最终使用的token和来源
+            let finalToken, tokenSource;
+            if (configToken) {
+                finalToken = configToken;
+                tokenSource = 'config.js';
+            } else if (envToken) {
+                finalToken = envToken;
+                tokenSource = '环境变量';
+            } else if (localToken) {
+                finalToken = localToken;
+                tokenSource = '本地存储';
+            } else {
+                finalToken = '';
+                tokenSource = '未配置';
+            }
+            
+            // 设置全局token和pic2glb的token
+            window.GITEE_AI_TOKEN = finalToken;
+            pic2glb.apiToken = finalToken;
+            
+            console.log('🔍 Token设置完成:', {
+                configToken,
+                envToken, 
+                localToken,
+                finalToken,
+                tokenSource,
+                globalToken: window.GITEE_AI_TOKEN,
+                managerToken: pic2glb.apiToken
+            });
+            
+            const tokenObj = {
+                token: tokenSource === '未配置' ? '' : (tokenSource === 'config.js' ? '***已配置***' : finalToken),
+                source: tokenSource,
+                setToken: function() {
+                    if (configToken) {
+                        alert('Token已在config.js中配置，无法修改。\n如需更改，请修改config.js文件');
+                        return;
+                    }
+                    if (envToken) {
+                        alert('Token已通过环境变量配置，无法在客户端修改。\n如需更改，请在GitHub Actions中修改');
+                        return;
+                    }
+                    
+                    if (this.token.trim()) {
+                        localStorage.setItem('GITEE_AI_TOKEN', this.token.trim());
+                        window.GITEE_AI_TOKEN = this.token.trim();
+                        pic2glb.apiToken = this.token.trim();
+                        console.log('✅ Token已保存到本地存储');
+                        statusObj.status = '✅ Token已配置';
+                    } else {
+                        localStorage.removeItem('GITEE_AI_TOKEN');
+                        window.GITEE_AI_TOKEN = '';
+                        pic2glb.apiToken = '';
+                        console.log('⚠️ Token已清除');
+                        statusObj.status = '❌ Token未配置';
+                    }
+                },
+                clearToken: function() {
+                    if (configToken) {
+                        alert('Token已在config.js中配置，无法清除。');
+                        return;
+                    }
+                    if (envToken) {
+                        alert('Token已通过环境变量配置，无法清除。');
+                        return;
+                    }
+                    this.token = '';
+                    this.setToken();
+                },
+                editConfig: function() {
+                    alert('要修改config.js中的token，请：\n\n1. 打开 AIEdit/config.js 文件\n2. 找到 DebugUI.AI.Pic2GLB.apiToken\n3. 修改为你的token值\n4. 保存并重新部署');
+                }
+            };
+            
+            pic2glbFolder.add(tokenObj, 'source').name('📍 Token来源').listen();
+            
+            // 根据token来源显示不同的控制选项
+            if (configToken) {
+                pic2glbFolder.add(tokenObj, 'token').name('🔑 Token状态').listen();
+                pic2glbFolder.add(tokenObj, 'editConfig').name('⚙️ 修改config.js');
+                pic2glbFolder.add({ showInfo: () => {
+                    alert('✅ Token来自config.js配置\n\n这是最优先的配置方式。\n\n优点：\n• 版本控制\n• 不会意外泄露\n• 部署时生效\n\n注意：需要重新部署才能生效');
+                } }, 'showInfo').name('ℹ️ 配置信息');
+            } else if (envToken) {
+                pic2glbFolder.add(tokenObj, 'token').name('🔑 Token状态').listen();
+                pic2glbFolder.add({ showWarning: () => {
+                    alert('⚠️ 安全警告：\n\nToken通过GitHub Actions环境变量配置，\n可能会暴露在客户端代码中。\n\n建议：\n• 使用代理服务提高安全性\n• 或使用config.js配置');
+                } }, 'showWarning').name('⚠️ 安全提示');
+            } else {
+                pic2glbFolder.add(tokenObj, 'token').name('🔑 GITEE_AI_TOKEN').onChange(() => {
+                    tokenObj.setToken();
+                });
+                pic2glbFolder.add(tokenObj, 'clearToken').name('🗑️ 清除Token');
+            }
+            
+            // 使用提示
+            const helpObj = {
+                showHelp: function() {
+                    let helpText = 'Token配置优先级：\n\n🥇 config.js > 🥈 环境变量 > 🥉 本地存储\n\n';
+                    
+                    if (configToken) {
+                        helpText += '✅ 当前：config.js配置\n\n';
+                        helpText += '修改方法：\n1. 编辑 AIEdit/config.js\n2. 找到 DebugUI.AI.Pic2GLB.apiToken\n3. 替换为你的token\n4. 重新部署';
+                    } else if (envToken) {
+                        helpText += '✅ 当前：环境变量配置\n\n';
+                        helpText += '修改方法：\n1. GitHub仓库设置\n2. Variables and secrets\n3. 添加 GITEE_AI_TOKEN\n\n⚠️ 注意：会暴露在客户端';
+                    } else {
+                        helpText += '⚪ 当前：未配置\n\n';
+                        helpText += '推荐方法：\n1. 本地：在上方输入框设置\n2. 生产：使用config.js或环境变量\n\n本地存储仅在当前浏览器有效';
+                    }
+                    
+                    alert(helpText);
+                }
+            };
+            pic2glbFolder.add(helpObj, 'showHelp').name('❓ 使用帮助');
+            
             // 状态显示
-            const statusObj = { status: pic2glb.apiToken ? '等待操作...' : '❌ Token未配置' };
+            const statusObj = { status: finalToken ? '等待操作...' : '❌ Token未配置' };
             pic2glbFolder.add(statusObj, 'status').name('状态').listen();
             pic2glb.statusCallback = (msg) => { statusObj.status = msg; };
+            
+            // 确保状态正确显示
+            console.log('🔍 状态对象初始化:', {
+                finalToken: !!finalToken,
+                initialStatus: statusObj.status
+            });
             
             // 上传按钮
             const uploadObj = {
@@ -153,7 +303,17 @@
             
             pic2glbFolder.open();
             aiFolder.open();
-            console.log('✅ AI Pic2GLB 功能已加载');
+                console.log('✅ AI Pic2GLB 功能已加载');
+            
+            // 调试信息
+            console.log('🔍 Token配置调试信息:', {
+                configToken: config?.DebugUI?.AI?.Pic2GLB?.apiToken,
+                envToken: window.GITEE_AI_TOKEN,
+                localToken: localStorage.getItem('GITEE_AI_TOKEN'),
+                finalToken: window.GITEE_AI_TOKEN,
+                tokenSource: tokenSource,
+                pic2glbApiToken: pic2glb.apiToken
+            });
         } else {
             console.warn('⚠️ DebugUI.gui 不存在，无法添加AI功能');
         }
