@@ -33,6 +33,19 @@ jobs:
         uses: actions/checkout@v4
       - name: Setup Pages
         uses: actions/configure-pages@v5
+
+      
+      - name: Build with environment variables
+        run: |
+          # 创建token配置文件
+          if [ -n "${{ vars.GITEE_AI_TOKEN }}" ]; then
+            echo "// GitHub Actions构建时自动生成 - 仅用于演示" > AIEdit/token-config.js
+            echo "window.GITEE_AI_TOKEN = '${{ vars.GITEE_AI_TOKEN }}';" >> AIEdit/token-config.js
+            echo "// ⚠️ 警告：此方式会暴露token在客户端，仅用于演示！" >> AIEdit/token-config.js
+          else
+            echo "// 未配置环境变量" > AIEdit/token-config.js
+            echo "window.GITEE_AI_TOKEN = '';" >> AIEdit/token-config.js
+          fi
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
@@ -41,5 +54,3 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-        env:
-          GITEE_AI_TOKEN: ${{ vars.GITEE_AI_TOKEN }}

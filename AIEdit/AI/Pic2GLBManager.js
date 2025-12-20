@@ -17,12 +17,13 @@ export default class Pic2GLBManager {
         this.statusCallback = null;
         
         // 动态获取token，支持运行时更新
+        this._apiToken = window.GITEE_AI_TOKEN || '';
         Object.defineProperty(this, 'apiToken', {
             get: function() {
-                return window.GITEE_AI_TOKEN || '';
+                return this._apiToken;
             },
             set: function(value) {
-                window.GITEE_AI_TOKEN = value;
+                this._apiToken = value;
             }
         });
         
