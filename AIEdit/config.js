@@ -47,7 +47,7 @@ export default {
             intensity: 0.5
         },
         directionalLight: {
-            enabled: false,
+            enabled: true,
             color: 0xffffff,
             intensity: 1.5,
             position: { x: 5, y: 10, z: 5 }
@@ -62,14 +62,14 @@ export default {
             lookAt: { x: 0.8, y: -9.6, z: 0.8 }
         },
         hemiLight: {
-            enabled: false,
+            enabled: true,
             color: 0xffffff,
             groundColor: 0xffffff,
             intensity: 1,
             position: { x: 0, y: 5, z: 0 }
         },
         spotLight: {
-            enabled: false,
+            enabled: true,
             color: 0x709af3,
             intensity: 2,
             distance: 50,
@@ -88,7 +88,7 @@ export default {
             }
         },
         pointLight: {
-            enabled: false,
+            enabled: true,
             color: 0xffccaa,
             intensity: 0.8,
             position: { x: -5, y: 3, z: -5 },
@@ -105,7 +105,7 @@ export default {
             }
         },
         directionalShadow: {
-            enabled: false
+            enabled: true
         }
     },
 
