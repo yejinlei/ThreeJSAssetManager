@@ -41,6 +41,8 @@ import PhysicsManager from './PhysicsManager.js'
 import AudioManager from './AudioManager.js'
 // 导入WebXR管理模块
 import WebXRManager from './WebXRManager.js'
+// 导入AI管理模块
+import AIManager from './AIManager.js'
 // 导入默认配置
 import defaultConfig from './config.js'
 
@@ -77,6 +79,9 @@ export default class ThreeJSAssetsManager {
       Object.assign(defaultConfig, customConfig);
       console.log('✅ Custom config replaced default config in ThreeJSAssetsManager');
     }
+
+    // 将配置挂载到实例上，供管理器使用
+    this.config = defaultConfig;
 
     // 兼容不同的参数传递方式
     if (canvasOrOptions && typeof canvasOrOptions === 'object' && canvasOrOptions.container) {
@@ -149,6 +154,8 @@ export default class ThreeJSAssetsManager {
     this.audioManager = new AudioManager({ debug: this.debug, gui: this.gui });
     // 初始化WebXR管理器
     this.webXRManager = new WebXRManager({ debug: this.debug, gui: this.gui });
+    // 初始化AI管理器
+    this.aiManager = new AIManager({ debug: this.debug, gui: this.gui });
 
     // 为窗口尺寸变化事件注册监听器，当窗口尺寸变化时调用 resize 方法
     this.sizes.on('resize', () => {

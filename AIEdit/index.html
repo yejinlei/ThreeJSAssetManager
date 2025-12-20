@@ -90,7 +90,6 @@
         import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
         import ThreeJSAssetsManager from '../ThreeJSAssetManager/ThreeJSAssetsManager/ThreeJSAssetsManager.js';
         import sources from '../ThreeJSAssetManager/ThreeJSAssetsManager/World/sources.js';
-        import Pic2GLBManager from './AI/Pic2GLBManager.js';
         import config from './config.js';
 
         // 清空 sources 数组，不加载任何默认模型
@@ -114,25 +113,16 @@
             shaderManager: !!manager.shaderManager,
             physicsManager: !!manager.physicsManager,
             audioManager: !!manager.audioManager,
-            webXRManager: !!manager.webXRManager
+            webXRManager: !!manager.webXRManager,
+            aiManager: !!manager.aiManager
         });
 
-        // 初始化AI功能 - 使用内置DebugUI
-        console.log('🔍 manager.gui:', manager.gui);
-        
-        if (manager.gui) {
-            // Pic2GLB功能 - 现在使用内置的DebugUI
-            const pic2glbConfig = config.DebugUI?.AI?.Pic2GLB;
-            console.log('🔧 Pic2GLB Config:', pic2glbConfig);
-            
-            const pic2glb = new Pic2GLBManager(manager, pic2glbConfig);
-            window.pic2glb = pic2glb;
-            
-            console.log('✅ AI Pic2GLB 功能已加载 (使用内置DebugUI)');
-            console.log('🔑 Pic2GLB API Token:', pic2glb.apiToken ? '已配置' : '未配置');
-            console.log('🔑 完整Token:', pic2glb.apiToken);
+        // AI功能已集成到框架中，无需额外初始化
+        if (manager.aiManager) {
+            console.log('✅ AI Manager 功能已加载 (框架内置)');
+            console.log('🔑 AI Manager API Token:', manager.aiManager.apiToken ? '已配置' : '未配置');
         } else {
-            console.warn('⚠️ DebugUI.gui 不存在，无法添加AI功能');
+            console.warn('⚠️ AI Manager 未找到');
         }
 
         // 自定义拖拽加载 GLB/GLTF 功能

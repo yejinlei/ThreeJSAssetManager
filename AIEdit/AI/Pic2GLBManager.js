@@ -100,7 +100,7 @@ export default class Pic2GLBManager {
             tokenObject._displayToken = this.maskToken(newToken);
         });
         
-        folder.add(tokenObject, '_displayToken').name('API Token').listen();
+        folder.add(tokenObject, '_displayToken').name('模力方舟：API Token').listen();
         folder.add(tokenObject, 'setToken').name('🔑 设置Token');
         
         // 文件上传区域

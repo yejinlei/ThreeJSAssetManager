@@ -181,6 +181,15 @@ export default {
         }
     },
 
+    AIManager: {
+        enabled: true,
+        apiToken: 'C4CTDYEXRLRWO3TPBSS970UJLIKJHJ6G8A4HY01U',
+        models: {
+            'Hunyuan3D-2': 'Hunyuan3D-2',
+            'Hi3DGen': 'Hi3DGen'
+        }
+    },
+
     DebugUI: {
         enabled: true,
         Utilities: {
