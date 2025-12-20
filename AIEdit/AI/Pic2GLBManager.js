@@ -9,13 +9,22 @@ import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 export default class Pic2GLBManager {
     constructor(sceneManager, config = null) {
         this.sceneManager = sceneManager;
-        this.apiToken = window.GITEE_AI_TOKEN || config?.apiToken || '';
         this.apiUrl = 'https://ai.gitee.com/v1/async/image-to-3d';
         this.currentTaskId = null;
         this.currentGLBUrl = null;
         this.currentModel = null;
         this.isProcessing = false;
         this.statusCallback = null;
+        
+        // 动态获取token，支持运行时更新
+        Object.defineProperty(this, 'apiToken', {
+            get: function() {
+                return window.GITEE_AI_TOKEN || '';
+            },
+            set: function(value) {
+                window.GITEE_AI_TOKEN = value;
+            }
+        });
         
         // GLTFLoader
         this.gltfLoader = new GLTFLoader();
